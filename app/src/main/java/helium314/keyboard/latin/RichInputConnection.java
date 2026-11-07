@@ -707,7 +707,11 @@ public final class RichInputConnection implements PrivateCommandPerformer {
                 // Note that the check may also fail because the text field is not yet updated, so we don't want to check everything!
                 final CharSequence lastChar = mIC.getTextBeforeCursor(1, 0);
                 if (lastChar == null || lastChar.length() == 0 || text.charAt(text.length() - 1) != lastChar.charAt(0)) {
-                    Log.w(TAG, "did set " + text + ", but got " + mIC.getTextBeforeCursor(text.length(), 0) + " as last character");
+                    // Never log the text itself: this can be a password field (no suggestions).
+                    final CharSequence actual = mIC.getTextBeforeCursor(text.length(), 0);
+                    Log.w(TAG, "did set composing text of length " + text.length()
+                            + ", but the text before the cursor does not end with it (got length "
+                            + (actual == null ? "null" : String.valueOf(actual.length())) + ")");
                     return false;
                 }
             }
