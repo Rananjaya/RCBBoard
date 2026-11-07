@@ -26,6 +26,7 @@ import helium314.keyboard.latin.common.StringUtils
 import helium314.keyboard.latin.inputlogic.InputLogic
 import helium314.keyboard.latin.inputlogic.SpaceState
 import helium314.keyboard.latin.settings.Settings
+import helium314.keyboard.latin.utils.Log
 import helium314.keyboard.latin.utils.ScriptUtils
 import helium314.keyboard.latin.utils.SubtypeSettings
 import helium314.keyboard.latin.utils.getTimestampFormatter
@@ -45,6 +46,7 @@ import kotlin.streams.asSequence
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
@@ -676,6 +678,21 @@ class InputLogicTest {
         assertEquals(false, StuffReceiver.shouldHandleEmojiSearchDone(action, true))
         assertEquals(false, StuffReceiver.shouldHandleEmojiSearchDone("other", false))
         assertEquals(false, StuffReceiver.shouldHandleEmojiSearchDone(null, false))
+    }
+
+    // Privacy regression test: when RichInputConnection.setComposingText's sanity check fails in a
+    // field without suggestions (such as a password field), the warning must contain only lengths,
+    // never the typed text or the text before the cursor.
+    @Test fun failedComposingTextCheckDoesNotLogTypedText() {
+        setInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        assertFalse(settingsValues.mInputAttributes.mShouldShowSuggestions)
+        val secret = "hunter2Secret"
+        // The test input connection returns the first characters before the cursor ("h"), which
+        // differ from the last composed character ("t"), so the check fails and the warning is logged.
+        assertFalse(connection.setComposingText(secret, 1))
+        val newLog = Log.getLog(20).map { it.toString() }
+        assertTrue(newLog.any { "did set composing text of length ${secret.length}" in it }, "warning not logged")
+        assertTrue(newLog.none { "hunter" in it || "Secret" in it }, "typed text was logged")
     }
 
     // ---- Sinhala (Wijesekara) layout: typing through the input pipeline ----
