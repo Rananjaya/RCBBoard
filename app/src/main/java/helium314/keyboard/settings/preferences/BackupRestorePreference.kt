@@ -174,10 +174,14 @@ private fun restoreLauncher(onError: (String) -> Unit): ManagedActivityResultLau
             val oldProtectedPrefs = ctx.protectedPrefs().all.toMap()
             val filesDir = ctx.filesDir!!
             val deviceProtectedFilesDir = DeviceProtectedUtils.getFilesDir(ctx)
-            val filesDir2 = File(filesDir.absolutePath + "2")
-            val deviceProtectedFilesDir2 = File(deviceProtectedFilesDir.absolutePath + "2")
-            filesDir.renameTo(filesDir2)
-            deviceProtectedFilesDir2.renameTo(deviceProtectedFilesDir2)
+            // Keep the current files so they can be put back if the restore fails.
+            val originalFiles = RestoreDirectories(listOf(filesDir, deviceProtectedFilesDir))
+            if (!originalFiles.moveAside()) {
+                onError("r" + "could not set the current files aside, nothing was changed")
+                Log.w("AdvancedScreen", "restore aborted: could not move the current files aside")
+                wait.countDown()
+                return@execute
+            }
             try {
                 var anyMatch = false
                 ctx.getActivity()?.contentResolver?.openInputStream(uri)?.use { inputStream ->
@@ -224,16 +228,12 @@ private fun restoreLauncher(onError: (String) -> Unit): ManagedActivityResultLau
                     throw Exception("nothing to restore in the given file")
 
                 Database.copyFromDb(restoredDb, ctx)
-                filesDir2.deleteRecursively()
-                deviceProtectedFilesDir2.deleteRecursively()
+                originalFiles.commit()
                 if (Looper.myLooper() == null)
                     Looper.prepare()
                 Toast.makeText(ctx, ctx.getString(R.string.backup_restored), Toast.LENGTH_LONG).show()
             } catch (t: Throwable) {
-                filesDir.deleteRecursively()
-                filesDir2.renameTo(filesDir)
-                deviceProtectedFilesDir.deleteRecursively()
-                deviceProtectedFilesDir2.renameTo(deviceProtectedFilesDir)
+                originalFiles.rollback()
                 ctx.prefs().edit {
                     clear()
                     oldPrefs.forEach { (key, value) ->
@@ -334,6 +334,60 @@ private fun restoreEntryToDir(zip: ZipInputStream, baseDir: File, entryName: Str
     ) return false
     FileUtils.copyStreamToNewFile(zip, file)
     return true
+}
+
+/**
+ * Sets directories aside before a restore, so that a failed restore can put them back.
+ * Each directory is moved to "<dir>2" by [moveAside]; [commit] deletes these copies after a
+ * successful restore, [rollback] deletes the partially restored files and moves the copies back.
+ * The same directory is handled only once (on Android < 7 the device protected files directory
+ * is the normal files directory).
+ */
+internal class RestoreDirectories(dirs: List<File>) {
+    private val dirs = dirs.map { it.absoluteFile }.distinct()
+    private val movedAside = mutableListOf<File>() // directories that now have a copy in "<dir>2"
+    private val notExisting = mutableListOf<File>() // directories that did not exist before the restore
+
+    private fun aside(dir: File) = File(dir.path + "2")
+
+    /**
+     * Moves every existing directory to "<dir>2". Returns false, and changes nothing, if this is not
+     * possible, e.g. because "<dir>2" is left over from an interrupted restore.
+     */
+    fun moveAside(): Boolean {
+        for (dir in dirs) {
+            if (!dir.exists()) {
+                notExisting.add(dir)
+                continue
+            }
+            if (aside(dir).exists() || !dir.renameTo(aside(dir))) {
+                movedAside.asReversed().forEach { aside(it).renameTo(it) }
+                movedAside.clear()
+                notExisting.clear()
+                return false
+            }
+            movedAside.add(dir)
+        }
+        return true
+    }
+
+    /** The restore succeeded: delete the original files that were set aside. */
+    fun commit() {
+        movedAside.forEach { aside(it).deleteRecursively() }
+        movedAside.clear()
+        notExisting.clear()
+    }
+
+    /** The restore failed: remove the partially restored files and put the original files back. */
+    fun rollback() {
+        notExisting.forEach { it.deleteRecursively() }
+        movedAside.asReversed().forEach {
+            it.deleteRecursively()
+            aside(it).renameTo(it)
+        }
+        movedAside.clear()
+        notExisting.clear()
+    }
 }
 
 private const val PREFS_FILE_NAME = "preferences.json"
