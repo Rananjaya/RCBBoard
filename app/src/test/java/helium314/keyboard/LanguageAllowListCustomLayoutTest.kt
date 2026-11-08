@@ -37,6 +37,7 @@ import kotlin.test.assertTrue
 class LanguageAllowListCustomLayoutTest {
     private val latinIME = Robolectric.setupService(LatinIME::class.java)
     private val enUs = "en-US".constructLocale()
+    private val enGb = "en-GB".constructLocale()
     private val siLk = "si-LK".constructLocale()
     private val german = "de-DE".constructLocale()
 
@@ -81,6 +82,12 @@ class LanguageAllowListCustomLayoutTest {
         assertTrue((enUs to layout) in selectable(), "${selectable()}")
     }
 
+    @Test fun `custom English (UK) layout is offered`() {
+        val layout = createCustomLayout(resourceSubtype(enGb), "My British English")
+        assertTrue((enGb to layout) in additional(), "${additional()}")
+        assertTrue((enGb to layout) in selectable(), "${selectable()}")
+    }
+
     @Test fun `custom Sinhala layout is offered`() {
         val layout = createCustomLayout(resourceSubtype(siLk, "sinhala"), "My Sinhala")
         assertTrue((siLk to layout) in additional(), "${additional()}")
@@ -101,7 +108,7 @@ class LanguageAllowListCustomLayoutTest {
         createCustomLayout(resourceSubtype(german), "Mein Deutsch")
         assertEquals(
             setOf(
-                enUs to "qwerty", siLk to "sinhala", siLk to "sinhala_wijesekara", // built-in
+                enUs to "qwerty", enGb to "qwerty", siLk to "sinhala", siLk to "sinhala_wijesekara", // built-in
                 enUs to english, siLk to sinhala, // custom, allowed languages
             ),
             selectable()

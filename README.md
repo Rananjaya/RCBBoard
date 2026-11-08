@@ -51,11 +51,12 @@ The [HeliBoard wiki](https://github.com/HeliBorg/HeliBoard/wiki) explains these 
 
 ## English and Sinhala
 
-RCBBoard is set up for two languages: **English (US)** and **Sinhala**. You can switch between them with the globe key.
+RCBBoard is set up for **English (US)**, **English (UK)** and **Sinhala**. You can switch between them with the globe key. On first start, RCBBoard picks English (UK) if your phone's language is English (UK), and English (US) otherwise; you can enable more in Languages & Layouts.
 
 | Layout | What you get |
 | --- | --- |
-| **English (US)** – QWERTY | Suggestions, autocorrection, next-word predictions and emoji suggestions. |
+| **English (US)** – QWERTY | Suggestions, autocorrection, next-word predictions and emoji suggestions, with US spelling (color, realize). |
+| **English (UK)** – QWERTY | The same features with the British English dictionary and spelling (colour, realise). |
 | **Sinhala** | Sinhala word suggestions from the bundled Sinhala dictionary, and Sinhala emoji suggestions. |
 | **Sinhala (Wijesekara)** | The standard Wijesekara typewriter arrangement, with the same Sinhala suggestions. |
 
