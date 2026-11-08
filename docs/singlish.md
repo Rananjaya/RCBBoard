@@ -4,9 +4,9 @@ The **Sinhala (Singlish)** keyboard lets you type Sinhala phonetically with the 
 
 Everything runs on the phone. Nothing is sent anywhere, and the Latin letters you type are kept only in memory until the word is finished.
 
-## Phase 1 status
+## Status
 
-This is phase 1: the keyboard follows the rules below exactly and gives one result. Some everyday spellings map to a different letter than the one you mean:
+The keyboard follows the rules below exactly and gives one result (phase 1, with the conjunct rules of phase 2A). Some everyday spellings map to a different letter than the one you mean:
 
 | Intended word | Everyday spelling gives | Type instead |
 | --- | --- | --- |
@@ -76,8 +76,8 @@ Consonants:
 | `b` | බ | |
 | `bh` | භ | aspirated |
 | `m` | ම | |
-| `y` | ය | |
-| `r` | ර | before a consonant: ර් (as in the bundled word list, `karma` කර්ම) |
+| `y` | ය | after a consonant: yansaya ්‍ය, `vidhyaa` විද්‍යා (see [Conjuncts](#conjuncts-and-zwj)) |
+| `r` | ර | after a consonant: rakaransaya ්‍ර, `kra` ක්‍ර, or with `u`/`uu` the signs ෘ/ෲ, `kruthi` කෘති; before a consonant: repaya ර්‍, `karma` කර්‍ම |
 | `l` | ල | |
 | `L` | ළ | retroflex |
 | `v` | ව | |
@@ -88,6 +88,7 @@ Consonants:
 | `Sh` | ෂ | retroflex |
 | `h` | හ | |
 | `f` | ෆ | |
+| `ksh` | ක්ෂ | `akshara` අක්ෂර, `kshaNa` ක්ෂණ (`kSh` gives the same) |
 
 Prenasalised (sanyaka) and other nasals:
 
@@ -109,8 +110,28 @@ Signs and conjuncts:
 | --- | --- | --- |
 | `x` | ං | anusvara; after a consonant it keeps the inherent vowel: `sixhala` සිංහල |
 | `H` | ඃ | visarga: `dhuHkha` දුඃඛ |
-| `Y` | ය | after a consonant: yansaya ්‍ය, `vidhYaa` විද්‍යා; otherwise ය |
-| `R` | ර | after a consonant: rakaransaya ්‍ර, `shRii` ශ්‍රී; after a vowel and before a consonant: repaya ර්‍, `kaRma` කර්‍ම; otherwise ර |
+| `Y` | ය | after a consonant: yansaya ්‍ය, `vidhYaa` විද්‍යා; otherwise ය (same as `y`) |
+| `R` | ර | after a consonant: always rakaransaya ්‍ර, also before `u`: `kRu` ක්‍රු; after a vowel and before a consonant: repaya ර්‍, `kaRma` කර්‍ම; otherwise ර |
+
+## Conjuncts and ZWJ
+
+Rakaransaya, yansaya and repaya are written in Unicode with hal kirīma (්, U+0DCA) and the zero width joiner **ZWJ (U+200D)**. Android draws the joined form only when the ZWJ is there; without it the hal is shown on its own (for example ක්ර instead of ක්‍ර). The Singlish keyboard therefore always types the ZWJ:
+
+| Form | Type | Unicode sequence | Result |
+| --- | --- | --- | --- |
+| rakaransaya | consonant + `r` (or `R`) | consonant, U+0DCA, **U+200D**, U+0DBB ර | `kra` ක්‍ර, `prashnaya` ප්‍රශ්නය, `shrii` ශ්‍රී, `indhra` ඉන්ද්‍ර |
+| yansaya | consonant + `y` (or `Y`) | consonant, U+0DCA, **U+200D**, U+0DBA ය | `vidhyaa` විද්‍යා, `anya` අන්‍ය |
+| repaya | `r` (or `R`) after a vowel, before a consonant | U+0DBB ර, U+0DCA, **U+200D**, consonant | `karma` කර්‍ම, `kaarya` කාර්‍ය, `dhharmaya` ධර්‍මය |
+| vocalic r | consonant + `ru` / `ruu` | consonant, U+0DD8 ෘ / U+0DF2 ෲ | `kruthi` කෘති, `gruha` ගෘහ, `kruu` කෲ |
+
+* `R` keeps rakaransaya where `r` would give ෘ: `kRu` ක්‍රු.
+* `r` at the end of a word or before a vowel is ර: `gedhar` ගෙදර්, `kuru` කුරු, `ruwan` රුවන්.
+* Words with several conjuncts work the same way: `shriilaxkaava` ශ්‍රීලංකාව, `vidhyaarthhiyaa` විද්‍යාර්‍ථියා.
+* The letters are the ones in the key table: `th` is dental ත and `sh` is ශ, so අර්‍ථය is typed `arthhaya` (`arthaya` gives අර්‍තය) and දෘෂ්ටි is typed `dhruShti` (`dhrushti` gives දෘශ්ටි).
+
+**Dictionary compatibility.** The bundled word list stores rakaransaya and yansaya with ZWJ, but most repaya words without it (about 2,980 words such as කර්ම, against about 30 with ZWJ). For the Singlish keyboard only, suggestions therefore also look up the spelling without the repaya ZWJ, and every suggestion is shown and committed with the ZWJ (කර්ම in the list becomes කර්‍ම). The Sinhala and Wijesekara keyboards and the dictionary file are not changed.
+
+**Not supported:** ඍ, ඎ, ෟ, ඏ and ඐ have no keys (the word list has 20, 0, 2, 0 and 0 words with them), nor do touching letters or ZWNJ. A plain hal before ර or ය (ක්ර, as in a few loanwords) can not be typed.
 
 ## Typing behaviour
 
@@ -130,7 +151,7 @@ No code or table was copied from them, and nothing comes from the proprietary He
 
 * `th`/`dh` dental (ත ද) with `thh`/`dhh` for the aspirated forms (ථ ධ);
 * `T`/`D` for the aspirated retroflex letters (ඨ ඪ), and no separate `Th`/`Dh`;
-* `R`/`Y` for rakaransaya/yansaya, and `R` before a consonant for repaya;
+* `r`/`y` (and `R`/`Y`) after a consonant for rakaransaya/yansaya, `r`/`R` before a consonant for repaya, and `ru`/`ruu` after a consonant for ෘ/ෲ;
 * no capital vowel shortcuts except `A`/`Aa`/`AA`.
 
 The m17n input methods (`si-singlish.mim`, `si-trans.mim`, `si-samanala.mim`, `si-sumihiri.mim`) use other, older conventions and were not used.
