@@ -148,7 +148,8 @@ class SinglishTransliteratorTest {
 
     @Test fun `repaya`() {
         assertSinglish("කර$hal${zwj}ම", "kaRma") // R after a vowel, before a consonant
-        assertSinglish("කර${hal}ම", "karma") // plain r gives ර් without ZWJ, as in the word list
+        // phase 2A (approved change): plain r before a consonant is repaya with ZWJ too; phase 1 gave කර්ම
+        assertSinglish("කර$hal${zwj}ම", "karma")
         assertSinglish("ර", "Ra") // R before a vowel is ර
         assertSinglish("අර", "aRa")
         assertSinglish("ර$hal", "R") // R at the end is ර්
@@ -164,7 +165,9 @@ class SinglishTransliteratorTest {
         assertSinglish("ශ", "sha"); assertSinglish("ශ$hal", "sh") // sh is one letter, not ස් + හ
         assertSinglish("ආ", "aa"); assertSinglish("ආඅ", "aaa")
         assertSinglish("ඈ", "Aa"); assertSinglish("ඇ", "A")
-        assertSinglish("ක$hal${zwj}ය", "kYa"); assertSinglish("ක${hal}ය", "kya") // Y is yansaya, y is ය
+        // phase 2A (approved change): after a consonant y is yansaya like Y; phase 1 gave ක්ය
+        assertSinglish("ක$hal${zwj}ය", "kYa"); assertSinglish("ක$hal${zwj}ය", "kya")
+        assertSinglish("ක්ෂ", "ksha"); assertSinglish("ක්ෂ", "kSha") // ksh before k + sh
     }
 
     @Test fun `capital letters without their own rule type like lowercase`() {

@@ -960,6 +960,65 @@ class InputLogicTest {
         assertEquals("මා", text)
     }
 
+    // ---- Singlish phase 2A: conjuncts with ZWJ (U+200D), checked as code points ----
+
+    private fun cps(s: CharSequence) = s.codePoints().toArray().joinToString(" ") { "U+%04X".format(it) }
+
+    @Test fun `singlish conjunct words are composed and committed with ZWJ`() {
+        for ((latin, expected) in listOf(
+            "kra" to "ක්‍ර",
+            "prashnaya" to "ප්‍රශ්නය",
+            "shrii" to "ශ්‍රී",
+            "vidhyaa" to "විද්‍යා",
+            "karma" to "කර්‍ම",
+            "kaarya" to "කාර්‍ය",
+            "kruthi" to "කෘති",
+            "kruu" to "කෲ",
+            "akshara" to "අක්ෂර",
+            "kRu" to "ක්‍රු",
+        )) {
+            switchToSinglish()
+            chainInput(latin)
+            assertEquals(cps(expected), cps(composer.typedWord), "composing $latin")
+            assertEquals(cps(expected), cps(text), "shown $latin")
+            input(' ')
+            assertEquals(cps("$expected "), cps(text), "committed $latin")
+        }
+    }
+
+    @Test fun `singlish backspace through conjuncts reconverts every step`() {
+        fun steps(latin: String, vararg afterEachDelete: String) {
+            switchToSinglish()
+            chainInput(latin)
+            for (expected in afterEachDelete) {
+                functionalKeyPress(KeyCode.DELETE)
+                assertEquals(cps(expected), cps(text), "deleting in $latin")
+                assertFalse(text.endsWith("‍"), "dangling ZWJ in $latin")
+            }
+        }
+        steps("kra", "ක්‍ර්", "ක්") // ක්‍ර → ක්‍ර් → ක්
+        steps("kya", "ක්‍ය්", "ක්") // ක්‍ය → ක්‍ය් → ක්
+        steps("karma", "කර්‍ම්", "කර්", "ක") // කර්‍ම් → කර් → ක
+        steps("kruu", "කෘ", "ක්‍ර්", "ක්") // කෲ → කෘ → ක්‍ර් → ක්
+        steps("ksha", "ක්ෂ්", "ක්ස්", "ක්") // ක්ෂ → ක්ෂ් → ක්ස් → ක්
+        // the Latin composing state survives the deletes: typing on gives the full word again
+        switchToSinglish()
+        chainInput("prash")
+        functionalKeyPress(KeyCode.DELETE)
+        functionalKeyPress(KeyCode.DELETE)
+        chainInput("shnaya ")
+        assertEquals(cps("ප්‍රශ්නය "), cps(text))
+    }
+
+    @Test fun `singlish punctuation after a conjunct commits it unchanged`() {
+        switchToSinglish()
+        chainInput("shrii.")
+        assertEquals(cps("ශ්‍රී."), cps(text))
+        switchToSinglish()
+        chainInput("karma,")
+        assertEquals(cps("කර්‍ම,"), cps(text))
+    }
+
     @Test fun `singlish never logs typed text`() {
         val secretLatin = "vasuraa"
         val secretSinhala = "වසුරා"

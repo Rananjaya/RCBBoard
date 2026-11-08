@@ -16,8 +16,11 @@ import java.text.Normalizer
  *     lowercase rule (`M` types like `m`), anything else passes through unchanged.
  *  2. Tokens are rendered with context: a consonant followed by a vowel takes that vowel's sign
  *     (`a` keeps the inherent vowel), a consonant followed by another consonant or by the end of
- *     the word gets hal kirīma (්), `Y`/`R` after a consonant give yansaya/rakaransaya, and `R`
- *     before a consonant (not after one) gives repaya.
+ *     the word gets hal kirīma (්). After a consonant, `r`/`R` give rakaransaya (්‍ර) and `y`/`Y`
+ *     yansaya (්‍ය); `ru`/`ruu` after a consonant give the vowel signs ෘ/ෲ (`R` + `u` keeps
+ *     rakaransaya + ු). `r`/`R` before a consonant, not after one, give repaya (ර්‍).
+ *     Rakaransaya, yansaya and repaya always contain ZWJ (U+200D): Android draws the joined forms
+ *     only with it, without it the hal is shown separately.
  *  3. The result is NFC-normalised.
  *
  * Phase 1 gives exactly one result. Spellings that the rules map differently from the intended word
@@ -29,6 +32,8 @@ object SinglishTransliterator {
     private const val ZWJ = "‍"
     private const val YA = "ය" // ය
     private const val RA = "ර" // ර
+    private const val VOCALIC_R_SIGN = "ෘ" // ෘ
+    private const val VOCALIC_RR_SIGN = "ෲ" // ෲ
 
     /** Letters that the Singlish keyboard collects into a word (ASCII letters only). */
     @JvmStatic
@@ -79,23 +84,51 @@ object SinglishTransliterator {
         return null
     }
 
+    private fun Token?.isConsonant() = this is Token.Rule && rule.kind == SinglishRules.Kind.CONSONANT
+    private fun Token?.hasKey(key: String) = this is Token.Rule && rule.key == key
+
     private fun render(tokens: List<Token>): String {
         val out = StringBuilder()
         // true while the last output is a consonant (or conjunct) without a vowel yet
         var consonantPending = false
-        tokens.forEachIndexed { index, token ->
+        var index = 0
+        while (index < tokens.size) {
+            val token = tokens[index]
+            val next = tokens.getOrNull(index + 1)
+            index++
             if (token is Token.PassThrough) {
                 if (consonantPending) out.append(HAL)
                 out.append(token.text)
                 consonantPending = false
-                return@forEachIndexed
+                continue
             }
             val rule = (token as Token.Rule).rule
             when (rule.kind) {
-                SinglishRules.Kind.CONSONANT -> {
-                    if (consonantPending) out.append(HAL)
-                    out.append(rule.letter)
-                    consonantPending = true
+                SinglishRules.Kind.CONSONANT -> when {
+                    // phase 2A: lowercase r after a consonant
+                    rule.key == "r" && consonantPending && (next.hasKey("u") || next.hasKey("uu")) -> {
+                        out.append(if (next.hasKey("u")) VOCALIC_R_SIGN else VOCALIC_RR_SIGN) // කෘ කෲ
+                        index++ // the u / uu is part of the sign
+                        consonantPending = false
+                    }
+                    rule.key == "r" && consonantPending -> { // rakaransaya: ක්‍ර
+                        out.append(HAL + ZWJ + RA)
+                        consonantPending = true
+                    }
+                    rule.key == "r" && next.isConsonant() -> { // repaya: ර්‍ before the next consonant
+                        out.append(RA + HAL + ZWJ)
+                        consonantPending = false
+                    }
+                    // phase 2A: lowercase y after a consonant
+                    rule.key == "y" && consonantPending -> { // yansaya: ක්‍ය
+                        out.append(HAL + ZWJ + YA)
+                        consonantPending = true
+                    }
+                    else -> {
+                        if (consonantPending) out.append(HAL)
+                        out.append(rule.letter)
+                        consonantPending = true
+                    }
                 }
                 SinglishRules.Kind.VOWEL -> {
                     out.append(if (consonantPending) rule.sign else rule.letter)
@@ -109,15 +142,13 @@ object SinglishTransliterator {
                     out.append(if (consonantPending) HAL + ZWJ + YA else YA)
                     consonantPending = true
                 }
-                SinglishRules.Kind.RAKARANSAYA -> {
-                    val next = tokens.getOrNull(index + 1)
-                    val nextIsConsonant = next is Token.Rule && next.rule.kind == SinglishRules.Kind.CONSONANT
+                SinglishRules.Kind.RAKARANSAYA -> { // explicit R: always rakaransaya after a consonant (kRu ක්‍රු)
                     when {
                         consonantPending -> { // rakaransaya: ක්‍ර
                             out.append(HAL + ZWJ + RA)
                             consonantPending = true
                         }
-                        nextIsConsonant -> { // repaya: ර්‍ before the next consonant
+                        next.isConsonant() -> { // repaya: ර්‍ before the next consonant
                             out.append(RA + HAL + ZWJ)
                             consonantPending = false
                         }
@@ -176,6 +207,7 @@ object SinglishRules {
         consonant("v", "ව"), consonant("w", "ව"),
         consonant("s", "ස"), consonant("sh", "ශ"), consonant("S", "ෂ"), consonant("Sh", "ෂ"),
         consonant("h", "හ"), consonant("f", "ෆ"),
+        consonant("ksh", "ක්ෂ"), // phase 2A: kSh gives the same; ක්ශ is almost unused
 
         // prenasalised (sanyaka) and other nasals
         consonant("zg", "ඟ"), consonant("zj", "ඦ"), consonant("zd", "ඬ"),

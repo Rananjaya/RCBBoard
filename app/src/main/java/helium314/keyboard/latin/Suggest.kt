@@ -7,6 +7,7 @@ package helium314.keyboard.latin
 
 import android.text.TextUtils
 import com.android.inputmethod.latin.utils.BinaryDictionaryUtils
+import helium314.keyboard.event.SinglishCombiner
 import helium314.keyboard.keyboard.Keyboard
 import helium314.keyboard.keyboard.internal.keyboard_parser.getEmojiDefaultVersion
 import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo
@@ -20,6 +21,7 @@ import helium314.keyboard.latin.define.DecoderSpecificConstants.SHOULD_REMOVE_PR
 import helium314.keyboard.latin.dictionary.Dictionary
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.settings.SettingsValuesForSuggestion
+import helium314.keyboard.latin.singlish.SinglishRepaya
 import helium314.keyboard.latin.suggestions.SuggestionStripView
 import helium314.keyboard.latin.utils.AutoCorrectionUtils
 import helium314.keyboard.latin.utils.Log
@@ -81,7 +83,13 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
                 settingsValuesForSuggestion, SESSION_ID_TYPING, inputStyleIfNotPrediction)
         val trailingSingleQuotesCount = StringUtils.getTrailingSingleQuotesCount(typedWordString)
         val capsMode = getCapsModeForTyping(wordComposer, keyboard)
-        val suggestionsContainer = ArrayList(suggestionResults)
+        val suggestionsContainer = if (typedWordString.isNotEmpty() && wordComposer.combiningSpec == SinglishCombiner.COMBINING_SPEC)
+            // RCBBoard Singlish: also find dictionary words stored without the repaya ZWJ, show all in ZWJ form
+            SinglishRepaya.compatibleSuggestions(typedWordString, suggestionResults) { word ->
+                mDictionaryFacilitator.getSuggestionResults(SinhalaLookup.exactLookupData(word), ngramContext, keyboard,
+                    settingsValuesForSuggestion, SESSION_ID_TYPING, inputStyleIfNotPrediction)
+            }
+        else ArrayList(suggestionResults)
         capitalizeAndAddTrailingSingleQuotes(suggestionsContainer, capsMode, trailingSingleQuotesCount, mDictionaryFacilitator.mainLocale)
         val capitalizedTypedWord = capitalize(typedWordString, capsMode, mDictionaryFacilitator.mainLocale)
 
