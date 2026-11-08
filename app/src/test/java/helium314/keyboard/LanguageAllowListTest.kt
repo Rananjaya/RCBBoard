@@ -6,6 +6,7 @@ import androidx.core.content.edit
 import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.LocaleUtils.constructLocale
+import helium314.keyboard.latin.dictionary.DictionaryFactory
 import helium314.keyboard.latin.dictionary.getDictionaryLocales
 import helium314.keyboard.latin.settings.Defaults
 import helium314.keyboard.latin.settings.Settings
@@ -32,6 +33,7 @@ import kotlin.test.assertTrue
 class LanguageAllowListTest {
     private val latinIME = Robolectric.setupService(LatinIME::class.java)
     private val enUs = "en-US".constructLocale()
+    private val enGb = "en-GB".constructLocale()
     private val siLk = "si-LK".constructLocale()
 
     // SubtypeSettings.init appends on every LatinIME created in a test run (once per process in
@@ -47,17 +49,37 @@ class LanguageAllowListTest {
     private fun selectable() = SubtypeSettings.getSelectableSubtypes().distinct()
         .map { it.locale().toLanguageTag() to it.mainLayoutNameOrQwerty() }
 
-    @Test fun `configured allow-list is en-US and si-LK`() {
-        assertEquals(listOf("en-US", "si-LK"), latinIME.resources.getStringArray(R.array.rcbboard_enabled_locales).toList())
+    @Test fun `configured allow-list is en-US, en-GB and si-LK`() {
+        assertEquals(listOf("en-US", "en-GB", "si-LK"), latinIME.resources.getStringArray(R.array.rcbboard_enabled_locales).toList())
     }
 
-    @Test fun `exactly three primary layouts are offered`() {
+    @Test fun `exactly four primary layouts are offered`() {
         loadDefaultAdditionalSubtypes() // German/French/Hungarian defaults present, and still not offered
         assertEquals(
-            setOf("en-US" to "qwerty", "si-LK" to "sinhala", "si-LK" to "sinhala_wijesekara"),
+            setOf("en-US" to "qwerty", "en-GB" to "qwerty", "si-LK" to "sinhala", "si-LK" to "sinhala_wijesekara"),
             selectable().toSet()
         )
-        assertEquals(3, selectable().size)
+        assertEquals(4, selectable().size)
+    }
+
+    @Test fun `English (US) and English (UK) are both offered as separate languages`() {
+        val english = SubtypeSettings.getSelectableSubtypes().distinct().filter { it.locale().language == "en" }
+        assertEquals(setOf(enUs, enGb), english.map { it.locale() }.toSet())
+        assertTrue(SubtypeSettings.isAllowedLocale(enUs))
+        assertTrue(SubtypeSettings.isAllowedLocale(enGb))
+        // the resource subtypes really have these locales, so the allow-list matches them
+        assertEquals(1, SubtypeSettings.getResourceSubtypesForLocale(enGb).distinct().size)
+        assertEquals(1, SubtypeSettings.getResourceSubtypesForLocale(enUs).distinct().size)
+    }
+
+    @Test fun `each English variant uses its own main dictionary`() {
+        val (_, us) = DictionaryFactory.getAvailableDictsForLocale(enUs, latinIME, true)
+        val (_, gb) = DictionaryFactory.getAvailableDictsForLocale(enGb, latinIME, true)
+        assertEquals("main_en-US.dict", us.single { it.startsWith("main_") })
+        assertEquals("main_en-GB.dict", gb.single { it.startsWith("main_") })
+        // both share the English emoji dictionary
+        assertEquals("emoji_en.dict", us.single { it.startsWith("emoji_") })
+        assertEquals("emoji_en.dict", gb.single { it.startsWith("emoji_") })
     }
 
     @Test fun `both Sinhala layouts are offered`() {
@@ -68,7 +90,7 @@ class LanguageAllowListTest {
     @Test fun `other languages and default additional layouts are not offered`() {
         loadDefaultAdditionalSubtypes()
         val offered = selectable().map { it.first }.toSet()
-        for (tag in listOf("de", "fr", "hu", "en-GB", "en-AU", "en-CA", "en-IN", "ko", "es", "ta", "zz")) {
+        for (tag in listOf("de", "fr", "hu", "en-AU", "en-CA", "en-IN", "ko", "es", "ta", "zz")) {
             assertFalse(tag in offered, "$tag must not be offered")
             assertFalse(SubtypeSettings.isAllowedLocale(tag.constructLocale()), tag)
         }
@@ -150,13 +172,61 @@ class LanguageAllowListTest {
         assertTrue(SubtypeSettings.isAllowedLocale(selected.locale()), "${selected.locale()}")
     }
 
-    @Test
-    @Config(qualifiers = "de-rDE")
-    fun `system language German starts with English (US)`() {
+    /** Languages a new install starts with (nothing chosen yet) for the current system language. */
+    private fun defaultEnabledLocales(): List<Locale> {
         latinIME.prefs().edit { putString(Settings.PREF_ENABLED_SUBTYPES, "") }
         SubtypeSettings.reloadSystemLocales(latinIME)
         SubtypeSettings.reloadEnabledSubtypes(latinIME)
+        return SubtypeSettings.getEnabledSubtypes(true).map { it.locale() }
+    }
+
+    @Test
+    @Config(qualifiers = "de-rDE")
+    fun `system language German starts with English (US)`() {
+        val enabled = defaultEnabledLocales()
         assertTrue(SubtypeSettings.getSystemLocales().any { it.language == "de" }, "${SubtypeSettings.getSystemLocales()}")
-        assertEquals(listOf(Locale.US), SubtypeSettings.getEnabledSubtypes(true).map { it.locale() })
+        assertEquals(listOf(Locale.US), enabled)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rGB")
+    fun `system language English (UK) starts with English (UK)`() {
+        val enabled = defaultEnabledLocales()
+        assertTrue(enGb in SubtypeSettings.getSystemLocales(), "${SubtypeSettings.getSystemLocales()}")
+        assertEquals(listOf(enGb), enabled)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU")
+    fun `system language English (Australia) starts with English (US)`() {
+        val enabled = defaultEnabledLocales()
+        assertTrue("en-AU".constructLocale() in SubtypeSettings.getSystemLocales(), "${SubtypeSettings.getSystemLocales()}")
+        assertEquals(listOf(Locale.US), enabled)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rUS")
+    fun `system language English (US) starts with English (US)`() {
+        assertEquals(listOf(Locale.US), defaultEnabledLocales())
+    }
+
+    @Test fun `switching between English (US), English (UK), Sinhala and Wijesekara`() {
+        val prefs = latinIME.prefs()
+        val us = SubtypeSettings.getResourceSubtypesForLocale(enUs).first()
+        val gb = SubtypeSettings.getResourceSubtypesForLocale(enGb).first()
+        val sinhala = SubtypeSettings.getResourceSubtypesForLocale(siLk).first { it.mainLayoutName() == "sinhala" }
+        val wijesekara = SubtypeSettings.getResourceSubtypesForLocale(siLk).first { it.mainLayoutName() == "sinhala_wijesekara" }
+        val all = listOf(us, gb, sinhala, wijesekara)
+        prefs.edit { putString(Settings.PREF_ENABLED_SUBTYPES, SubtypeSettings.createPrefSubtypes(all.map { it.toSettingsSubtype() })) }
+        SubtypeSettings.reloadEnabledSubtypes(latinIME)
+        assertEquals(all.map { it.hashCode() }.toSet(), SubtypeSettings.getEnabledSubtypes(false).distinct().map { it.hashCode() }.toSet())
+        for (subtype in all) {
+            prefs.edit { putString(Settings.PREF_SELECTED_SUBTYPE, subtype.toSettingsSubtype().toPref()) }
+            val selected = SubtypeSettings.getSelectedSubtype(prefs)
+            assertEquals(subtype.locale(), selected.locale())
+            assertEquals(subtype.mainLayoutNameOrQwerty(), selected.mainLayoutNameOrQwerty())
+        }
+        prefs.edit { remove(Settings.PREF_ENABLED_SUBTYPES); remove(Settings.PREF_SELECTED_SUBTYPE) }
+        SubtypeSettings.reloadEnabledSubtypes(latinIME)
     }
 }
