@@ -109,6 +109,7 @@ class LanguageAllowListCustomLayoutTest {
         assertEquals(
             setOf(
                 enUs to "qwerty", enGb to "qwerty", siLk to "sinhala", siLk to "sinhala_wijesekara", // built-in
+                siLk to "qwerty", // built-in Sinhala (Singlish)
                 enUs to english, siLk to sinhala, // custom, allowed languages
             ),
             selectable()

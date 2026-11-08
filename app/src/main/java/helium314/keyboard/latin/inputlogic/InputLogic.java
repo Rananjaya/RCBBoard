@@ -28,6 +28,7 @@ import androidx.annotation.Nullable;
 import helium314.keyboard.compat.AppWorkarounds;
 import helium314.keyboard.event.Event;
 import helium314.keyboard.event.InputTransaction;
+import helium314.keyboard.event.SinglishCombiner;
 import helium314.keyboard.keyboard.Keyboard;
 import helium314.keyboard.keyboard.KeyboardElement;
 import helium314.keyboard.keyboard.KeyboardLayoutSet;
@@ -665,10 +666,12 @@ public final class InputLogic {
         if (mWordComposer.isComposingWord()) {
             // Khipro auto-space after suggestion: when user picks a suggestion and starts composing the next word,
             // insert space automatically, but skip it if the next character is punctuation (. , ; : ! ?) or word connector.
+            // RCBBoard: the same for Sinhala (Singlish), which composes through a combiner in the same way.
             final int codePoint = event.getCodePoint();
             final SettingsValues settingsValues = inputTransaction.getSettingsValues();
+            final String combiningSpec = mWordComposer.getCombiningSpec();
             if (SpaceState.PHANTOM == inputTransaction.getSpaceState()
-                    && "bn_khipro".equals(mWordComposer.getCombiningSpec())
+                    && ("bn_khipro".equals(combiningSpec) || SinglishCombiner.COMBINING_SPEC.equals(combiningSpec))
                     && !settingsValues.isWordConnector(codePoint)
                     && !settingsValues.isUsuallyFollowedBySpace(codePoint)) {
                 insertAutomaticSpaceIfOptionsAndTextAllow(settingsValues);

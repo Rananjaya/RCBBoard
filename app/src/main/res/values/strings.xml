@@ -475,6 +475,8 @@
     <string name="subtype_probhat_bn_BD">%s (Probhat)</string>
     <!-- Description for "LANGUAGE_NAME" (Wijesekara) keyboard subtype with explicit keyboard layout -->
     <string name="subtype_wijesekara_si_LK">%s (Wijesekara)</string>
+    <!-- RCBBoard: Sinhala keyboard typed phonetically with Latin letters (Singlish) -->
+    <string name="subtype_singlish_si_LK">Sinhala (Singlish)</string>
     <!-- Description for "LANGUAGE_NAME" (Baishakhi) keyboard subtype with explicit keyboard layout -->
     <string name="subtype_baishakhi_bn_IN">%s (Baishakhi)</string>
     <!-- Description for "LANGUAGE_NAME" (Khipro) keyboard subtype with explicit keyboard layout -->

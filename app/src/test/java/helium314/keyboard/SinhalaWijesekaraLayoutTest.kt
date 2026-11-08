@@ -149,7 +149,8 @@ class SinhalaWijesekaraLayoutTest {
     @Test fun `layout is registered as a separate Sinhala subtype next to the existing one`() {
         val subtypes = sinhalaSubtypes()
         val layouts = subtypes.mapNotNull { it.mainLayoutName() }
-        assertEquals(listOf("sinhala", "sinhala_wijesekara"), layouts)
+        // qwerty is the Sinhala (Singlish) subtype, declared after Wijesekara
+        assertEquals(listOf("sinhala", "sinhala_wijesekara", "qwerty"), layouts)
         assertTrue("sinhala" in layouts, "$layouts")
         assertTrue("sinhala_wijesekara" in layouts, "$layouts")
         assertTrue(LayoutUtils.getAvailableLayouts(LayoutType.MAIN, latinIME, sinhala)

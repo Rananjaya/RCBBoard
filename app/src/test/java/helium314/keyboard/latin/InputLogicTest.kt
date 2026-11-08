@@ -828,6 +828,151 @@ class InputLogicTest {
         assertEquals("hi", text)
     }
 
+    // ---- RCBBoard Sinhala (Singlish), see docs/singlish.md ----
+
+    // getResourceSubtypesForLocale can repeat entries in tests (SubtypeSettings.init runs per LatinIME), so use first
+    private fun singlishSubtype() = SubtypeSettings.getResourceSubtypesForLocale("si-LK".constructLocale())
+        .first { it.getExtraValueOf(Constants.Subtype.ExtraValue.COMBINING_RULES) == "si_singlish" }
+
+    private fun switchToSinglish() {
+        // setText restarts input with the combining rules of the test InputMethodManager's subtype
+        // (always English), so clear the text first and switch afterwards, as the Hangul tests do
+        setText("")
+        latinIME.switchToSubtype(singlishSubtype())
+        currentScript = ScriptUtils.SCRIPT_SINHALA
+    }
+
+    @Test fun `singlish subtype is a separate qwerty si-LK subtype`() {
+        val subtype = singlishSubtype()
+        assertEquals("qwerty", subtype.mainLayoutName())
+        assertTrue(subtype.isAsciiCapable)
+        assertTrue(subtype.extraValue.split(",").contains("EmojiCapable"), subtype.extraValue)
+        // the existing Sinhala layouts have no combiner
+        val others = SubtypeSettings.getResourceSubtypesForLocale("si-LK".constructLocale())
+            .distinctBy { it.hashCode() }.filter { it.hashCode() != subtype.hashCode() }
+        assertEquals(setOf("sinhala", "sinhala_wijesekara"), others.mapNotNull { it.mainLayoutName() }.toSet())
+        assertTrue(others.none { it.extraValue.contains("CombiningRules") })
+    }
+
+    @Test fun `singlish composes Sinhala and space commits it`() {
+        switchToSinglish()
+        chainInput("mama")
+        assertEquals("මම", composer.typedWord) // the Sinhala word goes to the dictionary for suggestions
+        assertEquals("මම", composingText.toString())
+        assertEquals("මම", text)
+        input(' ')
+        assertEquals("මම ", text)
+        assertFalse(composer.isComposingWord)
+        chainInput("gedhara")
+        input(' ')
+        assertEquals("මම ගෙදර ", text)
+    }
+
+    @Test fun `singlish example words`() {
+        for ((latin, sinhala) in listOf("mama" to "මම", "gedhara" to "ගෙදර", "kohomadha" to "කොහොමද",
+                "aayuboowan" to "ආයුබෝවන්", "sixhala" to "සිංහල")) {
+            switchToSinglish()
+            chainInput("$latin ")
+            assertEquals("$sinhala ", text, latin)
+        }
+    }
+
+    @Test fun `singlish reconverts the whole word on every key`() {
+        switchToSinglish()
+        chainInput("k")
+        assertEquals("ක්", text)
+        chainInput("o")
+        assertEquals("කො", text)
+        chainInput("o")
+        assertEquals("කෝ", text) // o + o is one long vowel, not two signs
+    }
+
+    @Test fun `singlish backspace removes one Latin letter and reconverts`() {
+        switchToSinglish()
+        chainInput("gedhar")
+        assertEquals("ගෙදර්", text)
+        functionalKeyPress(KeyCode.DELETE) // gedha
+        assertEquals("ගෙද", text)
+        assertEquals("ගෙද", composer.typedWord)
+        functionalKeyPress(KeyCode.DELETE) // gedh: dh is still one letter
+        assertEquals("ගෙද්", text)
+        functionalKeyPress(KeyCode.DELETE) // ged: d is ඩ on its own
+        assertEquals("ගෙඩ්", text)
+        chainInput("hara")
+        assertEquals("ගෙදර", text)
+    }
+
+    @Test fun `singlish backspace on the last letter keeps committed text`() {
+        switchToSinglish()
+        chainInput("mama ")
+        chainInput("ka")
+        functionalKeyPress(KeyCode.DELETE)
+        functionalKeyPress(KeyCode.DELETE)
+        assertFalse(composer.isComposingWord)
+        assertEquals("මම ", text)
+        // with nothing composed, backspace deletes text as usual
+        val before = text
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals(before.dropLast(1), text)
+    }
+
+    @Test fun `singlish punctuation and digits commit the word first`() {
+        switchToSinglish()
+        chainInput("kohomadha?")
+        assertEquals("කොහොමද?", text)
+        assertFalse(composer.isComposingWord)
+        switchToSinglish()
+        chainInput("mama2")
+        assertEquals("මම2", text)
+        switchToSinglish()
+        chainInput("mama, oyaa.")
+        assertEquals("මම, ඔයා.", text)
+    }
+
+    @Test fun `singlish capital letters select their own Sinhala letters`() {
+        switchToSinglish()
+        chainInput("Ta La Na Sa aBa kaRma vidhYaa ")
+        assertEquals("ඨ ළ ණ ෂ අඹ කර්‍ම විද්‍යා ", text)
+    }
+
+    @Test fun `singlish does not change English or the other Sinhala layouts`() {
+        switchToSinglish()
+        chainInput("mama ")
+        assertEquals("මම ", text)
+
+        latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("en-US".constructLocale()).first())
+        currentScript = ScriptUtils.SCRIPT_LATIN
+        setText("")
+        chainInput("mama")
+        assertEquals("mama", text)
+
+        latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("en-GB".constructLocale()).first())
+        setText("")
+        chainInput("colour")
+        assertEquals("colour", text)
+
+        assertTyped("කා", "ක", "ා") // Wijesekara keys still type Sinhala directly
+        latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("si-LK".constructLocale())
+            .first { it.mainLayoutName() == "sinhala" })
+        currentScript = ScriptUtils.SCRIPT_SINHALA
+        setText("")
+        pressKeys("ම", "ා")
+        assertEquals("මා", text)
+    }
+
+    @Test fun `singlish never logs typed text`() {
+        val secretLatin = "vasuraa"
+        val secretSinhala = "වසුරා"
+        switchToSinglish()
+        chainInput(secretLatin)
+        functionalKeyPress(KeyCode.DELETE)
+        chainInput("a ")
+        chainInput("$secretLatin.")
+        val log = Log.getLog().map { it.toString() } + ShadowLog.getLogs().map { "${it.tag} ${it.msg}" }
+        assertTrue(log.none { secretLatin in it || "vasur" in it || secretSinhala in it || "වසුර" in it },
+            "typed text was logged: ${log.filter { "vasur" in it || "වසුර" in it }}")
+    }
+
     // emoRegex update to unicode 16.0 was required, https://github.com/HeliBorg/HeliBoard/issues/1760
     @Test fun `emojis deleted one by one`() {
         chainInput("\uD83E\uDEC6\uD83E\uDEC6\uD83E\uDEC6")
