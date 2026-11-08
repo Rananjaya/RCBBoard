@@ -90,6 +90,7 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
                     settingsValuesForSuggestion, SESSION_ID_TYPING, inputStyleIfNotPrediction)
             }
         else ArrayList(suggestionResults)
+        removeEmojisIfDisabled(suggestionsContainer)
         capitalizeAndAddTrailingSingleQuotes(suggestionsContainer, capsMode, trailingSingleQuotesCount, mDictionaryFacilitator.mainLocale)
         val capitalizedTypedWord = capitalize(typedWordString, capsMode, mDictionaryFacilitator.mainLocale)
 
@@ -290,6 +291,7 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
         val locale = mDictionaryFacilitator.mainLocale
         val capsMode = getCapsModeForGesture(wordComposer, keyboard)
         val suggestionsContainer = ArrayList(suggestionResults)
+        removeEmojisIfDisabled(suggestionsContainer)
         replaceSingleLetterFirstSuggestion(suggestionsContainer)
 
         val rejected: SuggestedWordInfo?
@@ -356,6 +358,15 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
         val autocorrectCapitalization = addCapitalizedSuggestion && Settings.getValues().mAutoCorrectCapitalizedSuggestion && isCorrectionEnabled && !wordComposer.isCursorFrontOrMiddleOfComposingWord
         return SuggestedWords(suggestionsList, suggestionResults.mRawSuggestions, pseudoTypedWordInfo, true,
             autocorrectCapitalization, false, inputStyle, sequenceNumber)
+    }
+
+    /**
+     * RCBBoard: with "Emoji suggestions" off, no emoji is suggested. The setting is applied here, on every
+     * request, because emojis can come from an emoji dictionary that is still loaded (it is only removed
+     * when the main dictionaries are reloaded) and from the user history, where typed emojis are learned.
+     */
+    private fun removeEmojisIfDisabled(suggestions: ArrayList<SuggestedWordInfo>) {
+        if (!Settings.getValues().mSuggestEmojis) suggestions.removeAll { it.isEmoji }
     }
 
     private fun useDefaultEmojiSkinTone(suggestionsList: ArrayList<SuggestedWordInfo>) {
