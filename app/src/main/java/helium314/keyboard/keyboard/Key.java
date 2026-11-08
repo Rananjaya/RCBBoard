@@ -11,6 +11,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 
+import helium314.keyboard.event.SinglishCombiner;
 import helium314.keyboard.keyboard.internal.KeyDrawParams;
 import helium314.keyboard.keyboard.internal.KeySpecParser;
 import helium314.keyboard.keyboard.internal.KeyVisualAttributes;
@@ -1092,6 +1093,11 @@ public class Key implements Comparable<Key> {
 
             boolean needsToUpcase = needsToUpcase(mLabelFlags, params.mId.getElement());
             Locale localeForUpcasing = params.mId.getLocale();
+            // RCBBoard: Singlish types Latin letters on a Sinhala subtype. Sinhala has no capitals, so
+            // Shift would give lowercase letters; upcase like English so that T, D, N, L, ... work.
+            if (SinglishCombiner.COMBINING_SPEC.equals(params.mId.getSubtype()
+                    .getExtraValueOf(Constants.Subtype.ExtraValue.COMBINING_RULES)))
+                localeForUpcasing = Locale.ENGLISH;
             int actionFlags = 0;
             if (params.mId.getElement().isNumberLayout())
                 actionFlags = ACTION_FLAGS_NO_KEY_PREVIEW;

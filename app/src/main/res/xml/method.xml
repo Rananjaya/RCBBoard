@@ -1002,6 +1002,16 @@
         android:imeSubtypeExtraValue="KeyboardLayoutSet=MAIN:sinhala_wijesekara,NoShiftProximityCorrection,EmojiCapable"
         android:isAsciiCapable="false"
     />
+    <!-- RCBBoard: Sinhala typed phonetically with Latin letters (Singlish), see docs/singlish.md -->
+    <subtype android:icon="@drawable/ic_ime_switcher"
+        android:label="@string/subtype_singlish_si_LK"
+        android:subtypeId="0x6a3f51c7"
+        android:imeSubtypeLocale="si_LK"
+        android:languageTag="si-LK"
+        android:imeSubtypeMode="keyboard"
+        android:imeSubtypeExtraValue="KeyboardLayoutSet=MAIN:qwerty,CombiningRules=si_singlish,EmojiCapable"
+        android:isAsciiCapable="true"
+    />
     <subtype android:icon="@drawable/ic_ime_switcher"
         android:label="@string/subtype_generic"
         android:subtypeId="0x8e94d413"

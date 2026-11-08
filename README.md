@@ -59,6 +59,7 @@ RCBBoard is set up for **English (US)**, **English (UK)** and **Sinhala**. You c
 | **English (UK)** – QWERTY | The same features with the British English dictionary and spelling (colour, realise). |
 | **Sinhala** | Sinhala word suggestions from the bundled Sinhala dictionary, and Sinhala emoji suggestions. |
 | **Sinhala (Wijesekara)** | The standard Wijesekara typewriter arrangement, with the same Sinhala suggestions. |
+| **Sinhala (Singlish)** – QWERTY | Type Sinhala phonetically with English letters, for example `mama` → මම and `sixhala` → සිංහල, with the same Sinhala suggestions. See the [Singlish key table](docs/singlish.md). |
 
 **Typing in Wijesekara.** Type in Unicode order: the consonant first, then the vowel sign. For example, ක then ා gives කා, and ක then ෙ gives කෙ. Characters that a PC keyboard reaches with AltGr (such as independent vowels and two-part vowel signs) are on long-press. See the [Wijesekara layout notes](docs/sinhala-wijesekara-layout.md) for the full key map and sources.
 

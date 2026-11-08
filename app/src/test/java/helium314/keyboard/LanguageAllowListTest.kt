@@ -53,13 +53,14 @@ class LanguageAllowListTest {
         assertEquals(listOf("en-US", "en-GB", "si-LK"), latinIME.resources.getStringArray(R.array.rcbboard_enabled_locales).toList())
     }
 
-    @Test fun `exactly four primary layouts are offered`() {
+    @Test fun `exactly five primary layouts are offered`() {
         loadDefaultAdditionalSubtypes() // German/French/Hungarian defaults present, and still not offered
         assertEquals(
-            setOf("en-US" to "qwerty", "en-GB" to "qwerty", "si-LK" to "sinhala", "si-LK" to "sinhala_wijesekara"),
+            setOf("en-US" to "qwerty", "en-GB" to "qwerty",
+                "si-LK" to "sinhala", "si-LK" to "sinhala_wijesekara", "si-LK" to "qwerty"), // qwerty: Singlish
             selectable().toSet()
         )
-        assertEquals(4, selectable().size)
+        assertEquals(5, selectable().size)
     }
 
     @Test fun `English (US) and English (UK) are both offered as separate languages`() {
@@ -82,9 +83,11 @@ class LanguageAllowListTest {
         assertEquals("emoji_en.dict", gb.single { it.startsWith("emoji_") })
     }
 
-    @Test fun `both Sinhala layouts are offered`() {
+    @Test fun `all three Sinhala layouts are offered`() {
         val sinhala = SubtypeSettings.getSelectableSubtypes().distinct().filter { it.locale() == siLk }
-        assertEquals(setOf("sinhala", "sinhala_wijesekara"), sinhala.mapNotNull { it.mainLayoutName() }.toSet())
+        assertEquals(setOf("sinhala", "sinhala_wijesekara", "qwerty"), sinhala.mapNotNull { it.mainLayoutName() }.toSet())
+        // only the Singlish one (qwerty) uses a combiner
+        assertEquals(listOf("qwerty"), sinhala.filter { it.extraValue.contains("CombiningRules=si_singlish") }.map { it.mainLayoutName() })
     }
 
     @Test fun `other languages and default additional layouts are not offered`() {
@@ -109,7 +112,7 @@ class LanguageAllowListTest {
         assertFalse(SubtypeSettings.isAllowedLocale("si".constructLocale(), allowed))
         // the resource subtypes really have these locales, so the allow-list matches them
         assertTrue(SubtypeSettings.getResourceSubtypesForLocale(enUs).isNotEmpty())
-        assertEquals(2, SubtypeSettings.getResourceSubtypesForLocale(siLk).distinct().size)
+        assertEquals(3, SubtypeSettings.getResourceSubtypesForLocale(siLk).distinct().size)
     }
 
     @Test fun `empty allow-list restores upstream behaviour`() {
