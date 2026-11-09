@@ -2,7 +2,7 @@
 # Stage 2 - QA: started by hand with the exact commit SHA to test. The commit must be on
 # develop and must have a successful Development run (which already ran the CI checks on
 # exactly this commit). Builds the Debug APK (:app:assembleDebug,
-# com.ranger.myheliboard.debug) from exactly that commit for testing on the phone.
+# com.rananjaya.rcbboard.debug) from exactly that commit for testing on the phone.
 # Signed with the persistent RCBBoard debug key. No production secrets, no tags, no releases.
 # See docs/ci-cd.md.
 name: QA
@@ -27,7 +27,7 @@ env:
   JAVA_VERSION: "21"
   ANDROID_PACKAGES: "platform-tools platforms;android-37.0 build-tools;36.0.0 ndk;28.0.13004108"
   BUILD_TOOLS_VERSION: "36.0.0"
-  APP_ID: com.ranger.myheliboard.debug
+  APP_ID: com.rananjaya.rcbboard.debug
 
 jobs:
   gate:

@@ -84,7 +84,10 @@ RCBBoard needs Android 5.0 or newer. Release APKs are signed with this certifica
 ```
 
 > [!NOTE]
-> The F-Droid, GitHub release and IzzyOnDroid listings for HeliBoard install the original project, package `helium314.keyboard`. They do not install RCBBoard (`com.ranger.myheliboard`).
+> The F-Droid, GitHub release and IzzyOnDroid listings for HeliBoard install the original project, package `helium314.keyboard`. They do not install RCBBoard (`com.rananjaya.rcbboard`).
+
+> [!IMPORTANT]
+> **Upgrading from RCBBoard 4.10.2 or older:** those versions used the package name `com.ranger.myheliboard`. Newer versions use `com.rananjaya.rcbboard`, which Android treats as a **different app**: it does not update the old one, installs next to it, and starts without your settings or learned words. To move your data: in the old app, open *Settings → Advanced → Backup and restore* and save a backup; install the new version, enable it as your keyboard and restore that backup there; then uninstall the old app.
 
 **Build from source:** `./gradlew assembleRelease` builds an unsigned release APK (JDK 17 or newer; see [CONTRIBUTING.md](CONTRIBUTING.md#getting-started)). Source code: https://github.com/Rananjaya/RCBBoard/tree/develop
 
