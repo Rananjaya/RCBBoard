@@ -1030,6 +1030,32 @@ class InputLogicTest {
         assertEquals(0, ShadowFacilitator2.validWordLookups)
     }
 
+    // ---- Singlish phase 2B stage 3: smart space (characterization of the behaviour before stage 3) ----
+
+    private fun singlishWithAutoCorrect() {
+        setInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_CORRECT)
+        switchToSinglish()
+    }
+
+    @Test fun `singlish space commits the transliteration even when a correction is prepared`() {
+        singlishWithAutoCorrect()
+        chainInput("gedara")
+        assertEquals("ගෙඩර", composer.typedWord)
+        getAutocorrectedWithSpaceAfter("ගෙදර", "ගෙඩර")
+        // the combiner hands the converted word back before the space is handled, which clears the correction
+        assertEquals("ගෙඩර ", text)
+    }
+
+    @Test fun `singlish punctuation commits the transliteration even when a correction is prepared`() {
+        singlishWithAutoCorrect()
+        chainInput("gedara")
+        val info = SuggestedWordInfo("ගෙදර", "", 0, 0, null, 0, 0)
+        val typedInfo = SuggestedWordInfo("ගෙඩර", "", 0, 0, null, 0, 0)
+        latinIME.mInputLogic.setSuggestedWords(SuggestedWords(ArrayList(listOf(typedInfo, info)), null, typedInfo, false, true, false, InputStyle.NONE, 0))
+        input('.')
+        assertEquals("ගෙඩර.", text)
+    }
+
     @Test fun `singlish never logs typed text`() {
         val secretLatin = "vasuraa"
         val secretSinhala = "වසුරා"
