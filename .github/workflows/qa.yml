@@ -215,4 +215,6 @@ jobs:
             echo "\`\`\`"
             echo "$COMMIT"
             echo "\`\`\`"
+            echo
+            echo "\`dry_run\` is ticked by default (nothing is published). Untick it only to publish the production release."
           } >> "$GITHUB_STEP_SUMMARY"
