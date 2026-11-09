@@ -81,11 +81,15 @@ class SinhalaWordBoundaryTest {
         assertEquals(0 to 5, defaultBounds("ක්", "${zwj}රම"))
         assertEquals(0 to 3, defaultBounds("අ", "පි ගෙදර"))
         assertEquals(0 to 5, defaultBounds("සි", "ංහල"))
-        // ... but known limitation: right after a word ending in a vowel sign or hal (not a "letter"), and at the
-        // very start of the text, it reports no word (upstream 87b6e5dd changes exactly this)
+        // at the start and the end of the text it finds the word, also when it ends with a vowel sign or hal
+        // (since upstream 87b6e5dd; before, it reported no word at the start and after such word ends)
+        assertEquals(0 to 3, defaultBounds("", "අපි"))
+        assertEquals(0 to 3, defaultBounds("අපි", ""))
+        assertEquals(0 to 3, defaultBounds("කර්", ""))
+        // known limitation: right after a word in the middle of the text it reports no word
+        // (87b6e5dd only changes the start and end of the text)
         assertEquals(3 to 3, defaultBounds("අපි", " ගෙදර"))
         assertEquals(3 to 3, defaultBounds("කර්", " යමු"))
-        assertEquals(0 to 0, defaultBounds("", "අපි"))
         // digits belong to the word for the default iterator
         assertEquals(0 to 6, defaultBounds("අපි1", "23"))
     }
