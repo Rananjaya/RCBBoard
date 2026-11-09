@@ -1030,6 +1030,195 @@ class InputLogicTest {
         assertEquals(0, ShadowFacilitator2.validWordLookups)
     }
 
+    // ---- Singlish phase 2B stage 3: smart space ----
+    // The suggestions (Suggest + SinglishAutoCorrection, see SuggestTest) prepare the correction; here
+    // it is prepared directly, as for the other auto-correction tests, and the keys are pressed.
+
+    private fun singlishWithAutoCorrect() {
+        setInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_CORRECT)
+        switchToSinglish()
+    }
+
+    /** What the suggestions prepare when [correction] is the auto-correction for the composing [typed] word. */
+    private fun prepareSinglishCorrection(typed: String, correction: String) {
+        assertEquals(typed, composer.typedWord)
+        val typedInfo = SuggestedWordInfo(typed, "", 0, SuggestedWordInfo.KIND_TYPED, null, 0, 0)
+        val info = SuggestedWordInfo(correction, "", 0, SuggestedWordInfo.KIND_CORRECTION, null, 0, 0)
+        latinIME.mInputLogic.setSuggestedWords(SuggestedWords(ArrayList(listOf(typedInfo, info)), null, typedInfo, false, true, false, InputStyle.NONE, 0))
+    }
+
+    @Test fun `singlish space commits the prepared correction`() {
+        // before stage 3 the combiner hand-back cleared the correction and ගෙඩර was committed
+        singlishWithAutoCorrect()
+        chainInput("gedara")
+        getAutocorrectedWithSpaceAfter("ගෙදර", "ගෙඩර")
+        assertEquals("ගෙදර ", text)
+        assertFalse(composer.isComposingWord)
+    }
+
+    @Test fun `singlish punctuation commits the correction before the character`() {
+        singlishWithAutoCorrect()
+        chainInput("gedara")
+        prepareSinglishCorrection("ගෙඩර", "ගෙදර")
+        input('.')
+        assertEquals("ගෙදර.", text)
+        chainInput("gedara")
+        prepareSinglishCorrection("ගෙඩර", "ගෙදර")
+        input(',')
+        assertEquals("ගෙදර.ගෙදර,", text)
+    }
+
+    @Test fun `singlish newline in a multi-line field commits the correction`() {
+        ShadowInputMethodService.imeOptions = EditorInfo.IME_FLAG_NO_ENTER_ACTION // as multi-line fields have
+        setInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_CORRECT or InputType.TYPE_TEXT_FLAG_MULTI_LINE)
+        switchToSinglish()
+        chainInput("gedara")
+        prepareSinglishCorrection("ගෙඩර", "ගෙදර")
+        input('\n')
+        assertEquals("ගෙදර\n", text)
+    }
+
+    @Test fun `singlish repaya correction is committed in the ZWJ form`() {
+        val zwj = "\u200D"
+        singlishWithAutoCorrect()
+        chainInput("arthaya")
+        prepareSinglishCorrection("අර්${zwj}තය", "අර්${zwj}ථය")
+        input(' ')
+        assertEquals("අර්${zwj}ථය ", text)
+    }
+
+    @Test fun `singlish backspace right after the correction restores the transliteration`() {
+        singlishWithAutoCorrect()
+        chainInput("gedara")
+        getAutocorrectedWithSpaceAfter("ගෙදර", "ගෙඩර")
+        assertEquals("ගෙදර ", text)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("ගෙඩර", text)
+    }
+
+    @Test fun `singlish manual pick wins over the prepared correction`() {
+        singlishWithAutoCorrect()
+        chainInput("kohomada")
+        prepareSinglishCorrection("කොහොමඩ", "කොහොමද")
+        pickSuggestion("කොහොම")
+        assertEquals("කොහොම", text)
+    }
+
+    @Test fun `singlish keeps the transliteration without a prepared correction`() {
+        singlishWithAutoCorrect()
+        chainInput("kohomada") // a valid word: the suggestions don't auto-correct it
+        val typedInfo = SuggestedWordInfo("කොහොමඩ", "", 0, SuggestedWordInfo.KIND_TYPED, null, 0, 0)
+        val spelling = SuggestedWordInfo("කොහොමද", "", 0, SuggestedWordInfo.KIND_CORRECTION, null, 0, 0)
+        latinIME.mInputLogic.setSuggestedWords(SuggestedWords(ArrayList(listOf(typedInfo, spelling)), null, typedInfo, true, false, false, InputStyle.NONE, 0))
+        input(' ')
+        assertEquals("කොහොමඩ ", text)
+    }
+
+    @Test fun `singlish does not correct when auto-correction is off`() {
+        singlishWithAutoCorrect()
+        latinIME.prefs().edit { putBoolean(Settings.PREF_AUTO_CORRECTION, false) }
+        assertFalse(settingsValues.mAutoCorrectEnabled)
+        chainInput("gedara")
+        prepareSinglishCorrection("ගෙඩර", "ගෙදර")
+        input(' ')
+        assertEquals("ගෙඩර ", text)
+    }
+
+    @Test fun `singlish does not correct in fields without auto-correction`() {
+        setInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI) // no auto-correction for URLs
+        switchToSinglish()
+        assertFalse(settingsValues.mAutoCorrectEnabled)
+        chainInput("gedara")
+        prepareSinglishCorrection("ගෙඩර", "ගෙදර")
+        input(' ')
+        assertEquals("ගෙඩර ", text)
+    }
+
+    @Test fun `singlish password fields neither look up nor correct`() {
+        setInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        switchToSinglish()
+        assertFalse(settingsValues.needsToLookupSuggestions())
+        assertFalse(settingsValues.mAutoCorrectEnabled)
+        ShadowFacilitator2.validWordLookups = 0
+        chainInput("gedara ")
+        assertFalse("ගෙදර" in text, text)
+        assertEquals(0, ShadowFacilitator2.validWordLookups)
+    }
+
+    @Test fun `singlish editor action enter does not correct`() {
+        singlishWithAutoCorrect()
+        chainInput("gedara")
+        prepareSinglishCorrection("ගෙඩර", "ගෙදර")
+        assertFalse("ගෙදර" in text)
+        latinIME.onEvent(Event.createSoftwareKeypressEvent(Constants.CODE_ENTER, KeyCode.UNSPECIFIED, 0,
+            Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false))
+        handleMessages()
+        assertTrue(ShadowInputMethodService.lastEditorAction != null) // Enter performed the editor action ...
+        assertFalse("ගෙදර" in text, text) // ... without correcting the word
+    }
+
+    @Test fun `singlish digit after a word does not correct it`() {
+        singlishWithAutoCorrect()
+        chainInput("gedara")
+        prepareSinglishCorrection("ගෙඩර", "ගෙදර")
+        input('1')
+        assertFalse("ගෙදර" in text, text)
+        assertTrue(text.startsWith("ගෙඩර"), text)
+    }
+
+    @Test fun `singlish correction is learned, but not in incognito mode`() {
+        singlishWithAutoCorrect()
+        chainInput("gedara")
+        getAutocorrectedWithSpaceAfter("ගෙදර", "ගෙඩර")
+        assertEquals("ගෙදර", lastAddedWord) // as for any committed word
+
+        lastAddedWord = ""
+        latinIME.prefs().edit { putBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, true) }
+        assertTrue(settingsValues.mIncognitoModeEnabled)
+        chainInput("gedara")
+        assertEquals("ගෙඩර", composer.typedWord) // still the Singlish keyboard
+        getAutocorrectedWithSpaceAfter("ගෙදර", "ගෙඩර")
+        assertEquals("ගෙදර ගෙදර ", text) // corrected ...
+        assertEquals("", lastAddedWord) // ... but nothing learned
+    }
+
+    @Test fun `singlish corrects with the suggestion strip hidden, like other languages`() {
+        // HeliBoard keeps looking up and auto-correcting when only the strip is hidden
+        singlishWithAutoCorrect()
+        latinIME.prefs().edit { putBoolean(Settings.PREF_SHOW_SUGGESTIONS, false) }
+        assertTrue(settingsValues.needsToLookupSuggestions())
+        chainInput("gedara")
+        getAutocorrectedWithSpaceAfter("ගෙදර", "ගෙඩර")
+        assertEquals("ගෙදර ", text)
+        // with auto-correction off as well, nothing is looked up at all
+        latinIME.prefs().edit { putBoolean(Settings.PREF_AUTO_CORRECTION, false) }
+        assertFalse(settingsValues.needsToLookupSuggestions())
+    }
+
+    @Test fun `a correction prepared for another word is not restored`() {
+        singlishWithAutoCorrect()
+        chainInput("geda")
+        prepareSinglishCorrection("ගෙඩ", "ගෙද") // suggestions for an earlier state of the word
+        chainInput("ra") // typing on clears it, and no new suggestions arrived
+        input(' ')
+        assertEquals("ගෙඩර ", text)
+    }
+
+    @Test fun `english and native sinhala auto-correction are unchanged`() {
+        setInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_CORRECT)
+        chainInput("hullo")
+        getAutocorrectedWithSpaceAfter("hello", "hullo")
+        assertEquals("hello ", text)
+
+        setText("")
+        latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("si-LK".constructLocale())
+            .first { it.mainLayoutName() == "sinhala" })
+        currentScript = ScriptUtils.SCRIPT_SINHALA
+        pressKeys("ග", "ෙ", "ඩ", "ර")
+        getAutocorrectedWithSpaceAfter("ගෙදර", "ගෙඩර")
+        assertEquals("ගෙදර ", text) // the native path, without a combiner, as before
+    }
+
     @Test fun `singlish never logs typed text`() {
         val secretLatin = "vasuraa"
         val secretSinhala = "වසුරා"
@@ -1203,6 +1392,7 @@ class InputLogicTest {
     private fun setCursorPosition(start: Int, end: Int = start, weirdTextField: Boolean = false) {
         val ei = EditorInfo()
         ei.inputType = currentInputType
+        ei.imeOptions = ShadowInputMethodService.imeOptions
         ei.initialSelStart = start
         ei.initialSelEnd = end
         // imeOptions should not matter
@@ -1253,6 +1443,7 @@ class InputLogicTest {
         // restarting is false, so this is seen as a new text field
         val ei = EditorInfo()
         ei.inputType = currentInputType
+        ei.imeOptions = ShadowInputMethodService.imeOptions
         latinIME.mHandler.onStartInput(ei, false)
         latinIME.mHandler.onStartInputView(ei, false)
         handleMessages() // this is important so the composing span is set correctly

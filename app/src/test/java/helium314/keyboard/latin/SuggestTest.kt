@@ -41,6 +41,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Suppress("NonAsciiCharacters")
@@ -778,6 +779,7 @@ class SuggestTest {
     }
 
     @Test fun `singlish spellings do not change the auto-correction decision`() {
+        // with auto-correction off in this test field; the stage 3 tests below cover it switched on
         tapTypingSuggestions = suggestionResults(listOf(suggestion("ගෙදරට", 1500000, si), suggestion("ගෙඩරම", 900000, si)))
         validWords = emptySet()
         val before = singlish("gedara")
@@ -790,6 +792,7 @@ class SuggestTest {
     }
 
     @Test fun `a spelling that is also the auto-correction stays the auto-correction`() {
+        // with auto-correction off in this test field; the stage 3 tests below cover it switched on
         val autoCorrection = suggestion("ගෙදර", 1500000, si)
         tapTypingSuggestions = suggestionResults(listOf(autoCorrection, suggestion("ගෙදරට", 200, si)))
         validWords = emptySet()
@@ -828,6 +831,118 @@ class SuggestTest {
         val strip = words(singlish("gedara")) + words(singlish("arthaya"))
         val logged = ShadowLog.getLogs().joinToString("\n") { it.msg ?: "" }
         for (text in strip + listOf("gedara", "arthaya")) assertFalse(text in logged, "logged: $text")
+    }
+
+    // ---- RCBBoard Singlish phase 2B stage 3: conservative auto-correction (smart space) ----
+
+    private fun enableAutoCorrection() {
+        latinIME.prefs().edit { putBoolean(Settings.PREF_MORE_AUTO_CORRECTION, true) } // auto-correct also in this test field
+        assertTrue(Settings.getValues().mAutoCorrectEnabled)
+    }
+
+    private fun autoCorrection(result: SuggestedWords) =
+        if (result.mWillAutoCorrect) result.getWord(SuggestedWords.INDEX_OF_AUTO_CORRECTION) else null
+
+    @Test fun `singlish auto-corrects to the one clear dictionary spelling`() {
+        enableAutoCorrection()
+        useRealSinhalaDictionary()
+        assertEquals("ගෙදර", autoCorrection(singlish("gedara")))
+        assertEquals("සිංහල", autoCorrection(singlish("sinhala")))
+        assertEquals("ආයුබෝවන්", autoCorrection(singlish("ayubowan")))
+        assertEquals("අර්${zwj}ථය", autoCorrection(singlish("arthaya"))) // ZWJ form
+        assertEquals("දෘෂ්ටි", autoCorrection(singlish("dhrushti")))
+    }
+
+    @Test fun `singlish never auto-corrects a valid typed word`() {
+        enableAutoCorrection()
+        useRealSinhalaDictionary()
+        for (latin in listOf("kohomada", "mama", "gedhara", "karma")) {
+            val result = singlish(latin)
+            assertNull(autoCorrection(result), latin)
+            assertEquals(SinglishTransliterator.transliterate(latin), result.mTypedWordInfo?.mWord, latin)
+        }
+        assertTrue("කොහොමද" in words(singlish("kohomada"))) // still offered (stage 2)
+    }
+
+    @Test fun `singlish shows the typed word too when auto-correcting, so it can be kept`() {
+        enableAutoCorrection()
+        useRealSinhalaDictionary()
+        val strip = words(singlish("gedara"))
+        assertEquals("ගෙඩර", strip[0]) // the typed word
+        assertEquals("ගෙදර", strip[1]) // the auto-correction
+        assertTrue("ගෙඩර" in strip.drop(2), "$strip") // and visible in the strip to undo it (HeliBoard behaviour)
+        assertEquals(1, strip.count { it == "ගෙදර" })
+    }
+
+    @Test fun `singlish does not guess between equally cheap spellings`() {
+        enableAutoCorrection()
+        validWords = setOf("ගෙදර", "ගේඩර")
+        val result = singlish("gedara")
+        assertNull(autoCorrection(result))
+        assertTrue(words(result).containsAll(listOf("ගෙදර", "ගේඩර")), "${words(result)}") // both still suggested
+    }
+
+    @Test fun `singlish auto-correction respects the cost and length limits`() {
+        enableAutoCorrection()
+        validWords = setOf("ගේදරා") // three changes away
+        assertNull(autoCorrection(singlish("gedara")))
+        validWords = setOf("ගේදර") // two changes away
+        assertEquals("ගේදර", autoCorrection(singlish("gedara")))
+        validWords = setOf("මද") // ම + ඩ: only two code points
+        assertNull(autoCorrection(singlish("mada")))
+    }
+
+    @Test fun `singlish auto-correction is off with the auto-correction setting`() {
+        enableAutoCorrection()
+        latinIME.prefs().edit { putBoolean(Settings.PREF_AUTO_CORRECTION, false) }
+        assertFalse(Settings.getValues().mAutoCorrectEnabled)
+        useRealSinhalaDictionary()
+        val result = singlish("gedara")
+        assertNull(autoCorrection(result))
+        assertEquals("ගෙදර", words(result)[1]) // still suggested
+    }
+
+    @Test fun `singlish ignores fuzzy native auto-corrections`() {
+        // only the Singlish rules decide on the Singlish keyboard; a high-scoring native correction is just a suggestion
+        enableAutoCorrection()
+        validWords = emptySet()
+        tapTypingSuggestions = suggestionResults(listOf(suggestion("පෙඩරල්", Int.MAX_VALUE, si), suggestion("ෆෙඩරල්", 1500000, si)))
+        val result = singlish("gedara")
+        assertNull(autoCorrection(result))
+        assertTrue(words(result).containsAll(listOf("පෙඩරල්", "ෆෙඩරල්")))
+    }
+
+    @Test fun `singlish auto-correction uses the stage 2 spellings without extra lookups`() {
+        enableAutoCorrection()
+        useRealSinhalaDictionary()
+        validWordLookups = 0
+        singlish("gedara")
+        val withCorrection = validWordLookups
+        validWordLookups = 0
+        latinIME.prefs().edit { putBoolean(Settings.PREF_AUTO_CORRECTION, false) }
+        singlish("gedara")
+        assertEquals(validWordLookups, withCorrection) // the same lookups as for the suggestions alone
+    }
+
+    @Test fun `singlish auto-correction is the same in incognito mode`() {
+        enableAutoCorrection()
+        useRealSinhalaDictionary()
+        latinIME.prefs().edit { putBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, true) }
+        assertEquals("ගෙදර", autoCorrection(singlish("gedara"))) // learning is decided when committing (InputLogicTest)
+    }
+
+    @Test fun `english and native sinhala auto-correction are unchanged by the singlish rules`() {
+        enableAutoCorrection()
+        useRealSinhalaDictionary()
+        currentTypingLocale = si
+        tapTypingSuggestions = suggestionResults(listOf(suggestion("ගෙඩරට", 300, si)))
+        val sinhala = getSuggestedWords(false, "ගෙඩර", CapsMode.OFF) // the Sinhala / Wijesekara keyboards: no combiner
+        assertNull(autoCorrection(sinhala))
+        assertEquals(listOf("ගෙඩර", "ගෙඩරට"), words(sinhala))
+        currentTypingLocale = Locale.ENGLISH
+        tapTypingSuggestions = suggestionResults(listOf(suggestion("colour", 300), suggestion("color", 200)))
+        assertEquals(listOf("colo", "colour", "color"), words(getSuggestedWords(false, "colo", CapsMode.OFF)).take(3))
+        assertEquals(0, validWordLookups)
     }
 
     // ---- RCBBoard: Suggest gets a copy of the WordComposer (InputLogic.getSuggestedWords) ----
