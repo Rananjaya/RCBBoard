@@ -18,6 +18,7 @@ import helium314.keyboard.latin.common.ComposedData
 import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.InputPointers
 import helium314.keyboard.latin.common.StringUtils
+import helium314.keyboard.event.SinglishCombiner
 import helium314.keyboard.latin.dictionary.Dictionary
 import helium314.keyboard.latin.common.isEmoji
 import helium314.keyboard.latin.settings.Defaults
@@ -677,8 +678,32 @@ class SuggestTest {
         assertTrue(LatinIME.emojiSettingChangedSinceMainDictionaryLoad(false, true)) // turned on: load it again
     }
 
-    private fun getSuggestedWords(gesture: Boolean, typedWord: String, capsMode: CapsMode): SuggestedWords {
+    // ---- RCBBoard: Suggest gets a copy of the WordComposer (InputLogic.getSuggestedWords) ----
+
+    @Test fun `singlish suggestions work through the copied word composer, as InputLogic calls Suggest`() {
+        val zwj = "\u200D"
+        currentTypingLocale = Locale.forLanguageTag("si-LK")
+        // the word list stores repaya without ZWJ; phase 2A shows it with ZWJ on the Singlish keyboard only
+        tapTypingSuggestions = suggestionResults(listOf(suggestion("කර්ම", 300), suggestion("කර්මය", 200)))
+        val direct = getSuggestedWords(false, "karma", CapsMode.OFF, SinglishCombiner.COMBINING_SPEC)
+        val throughCopy = getSuggestedWords(false, "karma", CapsMode.OFF, SinglishCombiner.COMBINING_SPEC, throughCopy = true)
+        assertEquals("කර්${zwj}ම", throughCopy.mTypedWordInfo?.mWord) // typed through the Singlish combiner
+        assertEquals(words(direct), words(throughCopy))
+        assertTrue(words(throughCopy).containsAll(listOf("කර්${zwj}ම", "කර්${zwj}මය")), "${words(throughCopy)}")
+        assertTrue(words(throughCopy).none { "ර්ම" in it }, "repaya without ZWJ must not be shown: ${words(throughCopy)}")
+    }
+
+    @Test fun `copied word composer without a combiner gives the same suggestions as before`() {
+        currentTypingLocale = Locale.ENGLISH
+        tapTypingSuggestions = suggestionResults(listOf(suggestion("colour", 300), suggestion("color", 200)))
+        assertEquals(words(getSuggestedWords(false, "colo", CapsMode.OFF)),
+            words(getSuggestedWords(false, "colo", CapsMode.OFF, throughCopy = true)))
+    }
+
+    private fun getSuggestedWords(gesture: Boolean, typedWord: String, capsMode: CapsMode,
+                                  combiningSpec: String? = null, throughCopy: Boolean = false): SuggestedWords {
         val wc = WordComposer()
+        if (combiningSpec != null) wc.restartCombining(combiningSpec)
         if (gesture) wc.setBatchInputPointers(InputPointers(1))
         if (typedWord.isNotEmpty()) {
             StringUtils.toCodePointArray(typedWord).forEach {
@@ -704,7 +729,7 @@ class SuggestTest {
 
         suggest.clearNextWordSuggestionsCache()
         return suggest.getSuggestedWords(
-            wc, NgramContext.EMPTY_PREV_WORDS_INFO, Keyboard(params), Settings.getValues().mSettingsValuesForSuggestion,
+            if (throughCopy) wc.copy() else wc, NgramContext.EMPTY_PREV_WORDS_INFO, Keyboard(params), Settings.getValues().mSettingsValuesForSuggestion,
             Settings.getValues().mAutoCorrectEnabled, InputStyle.NONE, 0
         )
     }

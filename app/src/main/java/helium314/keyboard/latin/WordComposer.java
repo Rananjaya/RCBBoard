@@ -82,6 +82,8 @@ public final class WordComposer {
     @SuppressWarnings("CopyConstructorMissesField")
     private WordComposer(WordComposer other) {
         mEvents = null;
+        // RCBBoard: Suggest gets this copy and checks the combining spec (Sinhala Singlish), so keep it
+        mCombiningSpec = other.mCombiningSpec;
         mInputPointers = other.mInputPointers; // ideally we would have an actual copy, but for current use it should be ok
         mAutoCorrection = other.mAutoCorrection;
         mIsResumed = other.mIsResumed;
