@@ -20,14 +20,16 @@ import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.keyboard.MainKeyboardView
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.ShadowFacilitator2.Companion.lastAddedWord
-import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo
 import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.LocaleUtils.constructLocale
 import helium314.keyboard.latin.common.StringUtils
+import helium314.keyboard.latin.dictionary.Dictionary
 import helium314.keyboard.latin.inputlogic.InputLogic
 import helium314.keyboard.latin.inputlogic.SpaceState
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.Log
+import helium314.keyboard.latin.suggestions.SuggestedWords
+import helium314.keyboard.latin.suggestions.SuggestedWordInfo
 import helium314.keyboard.latin.utils.ScriptUtils
 import helium314.keyboard.latin.utils.SubtypeSettings
 import helium314.keyboard.latin.utils.getTimestampFormatter
@@ -1027,7 +1029,7 @@ class InputLogicTest {
         chainInput("gedara")
         assertFalse(settingsValues.needsToLookupSuggestions())
         inputLogic.performUpdateSuggestionStripSync(settingsValues, InputStyle.TYPING)
-        assertTrue(inputLogic.mSuggestedWords.isEmpty)
+        assertTrue(inputLogic.mSuggestedWords.isEmpty())
         assertEquals(0, ShadowFacilitator2.validWordLookups)
     }
 
@@ -1043,8 +1045,8 @@ class InputLogicTest {
     /** What the suggestions prepare when [correction] is the auto-correction for the composing [typed] word. */
     private fun prepareSinglishCorrection(typed: String, correction: String) {
         assertEquals(typed, composer.typedWord)
-        val typedInfo = SuggestedWordInfo(typed, "", 0, SuggestedWordInfo.KIND_TYPED, null, 0, 0)
-        val info = SuggestedWordInfo(correction, "", 0, SuggestedWordInfo.KIND_CORRECTION, null, 0, 0)
+        val typedInfo = SuggestedWordInfo(typed, "", 0, SuggestedWordInfo.KIND_TYPED, dict, 0, 0)
+        val info = SuggestedWordInfo(correction, "", 0, SuggestedWordInfo.KIND_CORRECTION, dict, 0, 0)
         latinIME.mInputLogic.setSuggestedWords(SuggestedWords(ArrayList(listOf(typedInfo, info)), null, typedInfo, false, true, false, InputStyle.NONE, 0))
     }
 
@@ -1108,8 +1110,8 @@ class InputLogicTest {
     @Test fun `singlish keeps the transliteration without a prepared correction`() {
         singlishWithAutoCorrect()
         chainInput("kohomada") // a valid word: the suggestions don't auto-correct it
-        val typedInfo = SuggestedWordInfo("කොහොමඩ", "", 0, SuggestedWordInfo.KIND_TYPED, null, 0, 0)
-        val spelling = SuggestedWordInfo("කොහොමද", "", 0, SuggestedWordInfo.KIND_CORRECTION, null, 0, 0)
+        val typedInfo = SuggestedWordInfo("කොහොමඩ", "", 0, SuggestedWordInfo.KIND_TYPED, dict, 0, 0)
+        val spelling = SuggestedWordInfo("කොහොමද", "", 0, SuggestedWordInfo.KIND_CORRECTION, dict, 0, 0)
         latinIME.mInputLogic.setSuggestedWords(SuggestedWords(ArrayList(listOf(typedInfo, spelling)), null, typedInfo, true, false, false, InputStyle.NONE, 0))
         input(' ')
         assertEquals("කොහොමඩ ", text)
@@ -1203,6 +1205,25 @@ class InputLogicTest {
         chainInput("ra") // typing on clears it, and no new suggestions arrived
         input(' ')
         assertEquals("ගෙඩර ", text)
+    }
+
+    @Test fun `singlish hand-back restores only the very correction object of the current suggestions`() {
+        // SuggestedWordInfo is a Kotlin data class since the upstream migration: a copy is equal, but restoring
+        // must still check identity (InputLogic.restoreSinglishAutoCorrection uses != in Java)
+        singlishWithAutoCorrect()
+        chainInput("gedara")
+        prepareSinglishCorrection("ගෙඩර", "ගෙදර")
+        val prepared = inputLogic.mSuggestedWords.getInfo(SuggestedWords.INDEX_OF_AUTO_CORRECTION)
+        val equalCopy = prepared.copy()
+        assertEquals(prepared, equalCopy)
+        composer.setAutoCorrection(equalCopy) // same content, different object
+        input(' ')
+        assertEquals("ගෙඩර ", text) // not restored, so the transliteration is committed
+
+        chainInput("gedara")
+        prepareSinglishCorrection("ගෙඩර", "ගෙදර") // the composer gets the suggestions' own object
+        input(' ')
+        assertEquals("ගෙඩර ගෙදර ", text)
     }
 
     @Test fun `english and native sinhala auto-correction are unchanged`() {
@@ -1446,7 +1467,7 @@ class InputLogicTest {
 
         if (!latinIME.prefs().getString(Settings.PREF_SELECTED_SUBTYPE, "")!!.contains("CombiningRules") // check fails if combiner merges symbols
             && !(codePoint == Constants.CODE_SPACE && oldBefore.lastOrNull() == ' ') // check fails when 2 spaces are converted into a period
-            && !latinIME.mInputLogic.mSuggestedWords.mWillAutoCorrect // autocorrect obviously creates inconsistencies
+            && !latinIME.mInputLogic.mSuggestedWords.willAutoCorrect // autocorrect obviously creates inconsistencies
             ) {
             if (phantomSpaceToInsert.isEmpty())
                 assertEquals(oldBefore + insert, textBeforeCursor)
@@ -1562,17 +1583,18 @@ class InputLogicTest {
         handleMessages()
     }
 
+    private val dict = Dictionary.PhonyDictionary("null")
     // like selecting a suggestion from strip
     private fun pickSuggestion(suggestion: String) {
-        val info = SuggestedWordInfo(suggestion, "", 0, 0, null, 0, 0)
+        val info = SuggestedWordInfo(suggestion, "", 0, 0, dict, 0, 0)
         latinIME.pickSuggestionManually(info)
         checkConnectionConsistency()
     }
 
     // only works when autocorrect is on, separator after word is required
-    private fun getAutocorrectedWithSpaceAfter(suggestion: String, typedWord: String?) {
-        val info = SuggestedWordInfo(suggestion, "", 0, 0, null, 0, 0)
-        val typedInfo = SuggestedWordInfo(typedWord, "", 0, 0, null, 0, 0)
+    private fun getAutocorrectedWithSpaceAfter(suggestion: String, typedWord: String) {
+        val info = SuggestedWordInfo(suggestion, "", 0, 0, dict, 0, 0)
+        val typedInfo = SuggestedWordInfo(typedWord, "", 0, 0, dict, 0, 0)
         val sw = SuggestedWords(ArrayList(listOf(typedInfo, info)), null, typedInfo, false, true, false, InputStyle.NONE, 0)
         latinIME.mInputLogic.setSuggestedWords(sw) // this prepares for autocorrect
         input(' ')
@@ -1580,7 +1602,7 @@ class InputLogicTest {
     }
 
     private fun glideTypingInput(word: String) {
-        val info = SuggestedWordInfo(word, "", 0, 0, null, 0, 0)
+        val info = SuggestedWordInfo(word, "", 0, 0, dict, 0, 0)
         val sw = SuggestedWords(ArrayList(listOf(info)), null, info, true, false, false, InputStyle.NONE, 0)
         latinIME.mInputLogic.onUpdateTailBatchInputCompleted(settingsValues, sw, KeyboardSwitcher.getInstance())
     }

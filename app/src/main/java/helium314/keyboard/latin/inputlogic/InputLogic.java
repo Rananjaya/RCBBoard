@@ -45,10 +45,6 @@ import helium314.keyboard.latin.LatinIME;
 import helium314.keyboard.latin.NgramContext;
 import helium314.keyboard.latin.RichInputConnection;
 import helium314.keyboard.latin.SingleDictionaryFacilitator;
-import helium314.keyboard.latin.Suggest;
-import helium314.keyboard.latin.Suggest.OnGetSuggestedWordsCallback;
-import helium314.keyboard.latin.SuggestedWords;
-import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo;
 import helium314.keyboard.latin.WordComposer;
 import helium314.keyboard.latin.common.Constants;
 import helium314.keyboard.latin.common.InputPointers;
@@ -60,6 +56,11 @@ import helium314.keyboard.latin.dictionary.DictionaryInfoUtils;
 import helium314.keyboard.latin.settings.Settings;
 import helium314.keyboard.latin.settings.SettingsValues;
 import helium314.keyboard.latin.settings.SpacingAndPunctuations;
+import helium314.keyboard.latin.suggestions.PunctuationSuggestions;
+import helium314.keyboard.latin.suggestions.Suggest;
+import helium314.keyboard.latin.suggestions.Suggest.OnGetSuggestedWordsCallback;
+import helium314.keyboard.latin.suggestions.SuggestedWords;
+import helium314.keyboard.latin.suggestions.SuggestedWordInfo;
 import helium314.keyboard.latin.suggestions.SuggestionStripViewAccessor;
 import helium314.keyboard.latin.utils.AsyncResultHolder;
 import helium314.keyboard.latin.utils.GestureDataGatheringKt;
@@ -76,6 +77,7 @@ import helium314.keyboard.latin.utils.TextRange;
 import helium314.keyboard.latin.utils.TimestampKt;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
@@ -287,9 +289,9 @@ public final class InputLogic {
         }
 
         SuggestedWords suggestedWords = mSuggestedWords;
-        String suggestion = suggestionInfo.mWord;
+        String suggestion = suggestionInfo.getWord();
         // If this is a punctuation picked from the suggestion strip, pass it to onCodeInput
-        if (suggestion.length() == 1 && suggestedWords.isPunctuationSuggestions()) {
+        if (suggestion.length() == 1 && suggestedWords instanceof PunctuationSuggestions) {
             // We still want to log a suggestion click.
             StatsUtils.onPickSuggestionManually(mSuggestedWords, suggestionInfo, mDictionaryFacilitator);
             // Word separators are suggested before the user inputs something.
@@ -336,7 +338,7 @@ public final class InputLogic {
             mSuggestionStripViewAccessor.setNeutralSuggestionStrip();
             inputTransaction.requireShiftUpdate(InputTransaction.SHIFT_UPDATE_NOW);
             resetComposingState(true /* alsoResetLastComposedWord */);
-            mConnection.commitCompletion(suggestionInfo.mApplicationSpecifiedCompletionInfo);
+            mConnection.commitCompletion(suggestionInfo.getApplicationSpecifiedCompletionInfo());
             mConnection.endBatchEdit();
             return inputTransaction;
         }
@@ -361,7 +363,7 @@ public final class InputLogic {
         handler.postUpdateSuggestionStrip(InputStyle.NONE);
 
         StatsUtils.onPickSuggestionManually(mSuggestedWords, suggestionInfo, mDictionaryFacilitator);
-        StatsUtils.onWordCommitSuggestionPickedManually(suggestionInfo.mWord, mWordComposer.isBatchMode());
+        StatsUtils.onWordCommitSuggestionPickedManually(suggestionInfo.getWord(), mWordComposer.isBatchMode());
         return inputTransaction;
     }
 
@@ -625,17 +627,17 @@ public final class InputLogic {
     public void setSuggestedWords(final SuggestedWords suggestedWords) {
         if (!suggestedWords.isEmpty()) {
             final SuggestedWordInfo suggestedWordInfo;
-            if (suggestedWords.mWillAutoCorrect) {
+            if (suggestedWords.getWillAutoCorrect()) {
                 suggestedWordInfo = suggestedWords.getInfo(SuggestedWords.INDEX_OF_AUTO_CORRECTION);
             } else {
                 // We can't use suggestedWords.getWord(SuggestedWords.INDEX_OF_TYPED_WORD)
                 // because it may differ from mWordComposer.mTypedWord.
-                suggestedWordInfo = suggestedWords.mTypedWordInfo;
+                suggestedWordInfo = suggestedWords.getTypedWordInfo();
             }
             mWordComposer.setAutoCorrection(suggestedWordInfo);
         }
         mSuggestedWords = suggestedWords;
-        final boolean newAutoCorrectionIndicator = suggestedWords.mWillAutoCorrect;
+        final boolean newAutoCorrectionIndicator = suggestedWords.getWillAutoCorrect();
 
         // Put a blue underline to a word in TextView which will be auto-corrected.
         if (mIsAutoCorrectionIndicatorOn != newAutoCorrectionIndicator && mWordComposer.isComposingWord()) {
@@ -1188,7 +1190,7 @@ public final class InputLogic {
             mSpaceState = SpaceState.SWAP_PUNCTUATION;
             mSuggestionStripViewAccessor.setNeutralSuggestionStrip();
         } else if (Constants.CODE_SPACE == codePoint) {
-            if (!mSuggestedWords.isPunctuationSuggestions()) {
+            if (!(mSuggestedWords instanceof PunctuationSuggestions)) {
                 mSpaceState = SpaceState.WEAK;
             }
 
@@ -1734,7 +1736,7 @@ public final class InputLogic {
                 final String typedWordString = mWordComposer.getTypedWord();
                 final SuggestedWordInfo typedWordInfo = new SuggestedWordInfo(
                     typedWordString, "", SuggestedWordInfo.MAX_SCORE, SuggestedWordInfo.KIND_TYPED,
-                    Dictionary.DICTIONARY_USER_TYPED, SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE
+                    Dictionary.DICTIONARY_USER_TYPED, SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE, null
                 );
                 // Show new suggestions if we have at least one. Otherwise keep the old
                 // suggestions with the new typed word. Exception: if the length of the
@@ -1751,7 +1753,7 @@ public final class InputLogic {
                 Constants.GET_SUGGESTED_WORDS_TIMEOUT);
         if (suggestedWords != null) {
             // Prefer clipboard suggestions (if available and setting is enabled) over beginning of sentence predictions.
-            if (!(suggestedWords.mInputStyle == InputStyle.BEGINNING_OF_SENTENCE_PREDICTION
+            if (!(suggestedWords.getInputStyle() == InputStyle.BEGINNING_OF_SENTENCE_PREDICTION
                     && mLatinIME.tryShowClipboardSuggestion())) {
                 mSuggestionStripViewAccessor.setSuggestions(suggestedWords);
             }
@@ -1830,10 +1832,10 @@ public final class InputLogic {
         final ArrayList<SuggestedWordInfo> suggestions = new ArrayList<>();
         final String typedWordString = range.mWord.toString();
         final SuggestedWordInfo typedWordInfo = new SuggestedWordInfo(typedWordString,
-                "" /* prevWordsContext */, SuggestedWords.MAX_SUGGESTIONS + 1,
+                "", SuggestedWords.MAX_SUGGESTIONS + 1,
                 SuggestedWordInfo.KIND_TYPED, Dictionary.DICTIONARY_USER_TYPED,
-                SuggestedWordInfo.NOT_AN_INDEX /* indexOfTouchPointOfSecondWord */,
-                SuggestedWordInfo.NOT_A_CONFIDENCE /* autoCommitFirstWordConfidence */);
+                SuggestedWordInfo.NOT_AN_INDEX,
+                SuggestedWordInfo.NOT_A_CONFIDENCE, null);
         suggestions.add(typedWordInfo);
         int i = 0;
         for (final SuggestionSpan span : range.getSuggestionSpansAtWord()) {
@@ -1841,11 +1843,10 @@ public final class InputLogic {
                 ++i;
                 if (!TextUtils.equals(s, typedWordString)) {
                     suggestions.add(new SuggestedWordInfo(s,
-                            "" /* prevWordsContext */, SuggestedWords.MAX_SUGGESTIONS - i,
+                            "", SuggestedWords.MAX_SUGGESTIONS - i,
                             SuggestedWordInfo.KIND_RESUMED, Dictionary.DICTIONARY_RESUMED,
-                            SuggestedWordInfo.NOT_AN_INDEX /* indexOfTouchPointOfSecondWord */,
-                            SuggestedWordInfo.NOT_A_CONFIDENCE
-                                    /* autoCommitFirstWordConfidence */));
+                            SuggestedWordInfo.NOT_AN_INDEX,
+                            SuggestedWordInfo.NOT_A_CONFIDENCE, null));
                 }
             }
         }
@@ -2130,24 +2131,22 @@ public final class InputLogic {
     }
 
     /**
-     * Make a {@link helium314.keyboard.latin.SuggestedWords} object containing a typed word
+     * Make a {@link helium314.keyboard.latin.suggestions.SuggestedWords} object containing a typed word
      * and obsolete suggestions.
-     * See {@link helium314.keyboard.latin.SuggestedWords#getTypedWordAndPreviousSuggestions(
-     *      SuggestedWordInfo, helium314.keyboard.latin.SuggestedWords)}.
+     * See {@link helium314.keyboard.latin.suggestions.SuggestedWords#getTypedWordAndPreviousSuggestions(
+     *      SuggestedWordInfo, helium314.keyboard.latin.suggestions.SuggestedWords)}.
      * @param typedWordInfo The typed word as a SuggestedWordInfo.
      * @param previousSuggestedWords The previously suggested words.
      * @return Obsolete suggestions with the newly typed word.
      */
-    static SuggestedWords retrieveOlderSuggestions(final SuggestedWordInfo typedWordInfo,
-            final SuggestedWords previousSuggestedWords) {
-        final SuggestedWords oldSuggestedWords = previousSuggestedWords.isPunctuationSuggestions()
+    static SuggestedWords retrieveOlderSuggestions(SuggestedWordInfo typedWordInfo,
+            SuggestedWords previousSuggestedWords) {
+        SuggestedWords oldSuggestedWords = previousSuggestedWords instanceof PunctuationSuggestions
                 ? SuggestedWords.getEmptyInstance() : previousSuggestedWords;
-        final ArrayList<SuggestedWords.SuggestedWordInfo> typedWordAndPreviousSuggestions =
+        List<SuggestedWordInfo> typedWordAndPreviousSuggestions =
                 SuggestedWords.getTypedWordAndPreviousSuggestions(typedWordInfo, oldSuggestedWords);
-        return new SuggestedWords(typedWordAndPreviousSuggestions, null /* rawSuggestions */,
-                typedWordInfo, false /* typedWordValid */, false /* hasAutoCorrectionCandidate */,
-                true /* isObsoleteSuggestions */, oldSuggestedWords.mInputStyle,
-                SuggestedWords.NOT_A_SEQUENCE_NUMBER);
+        return new SuggestedWords(typedWordAndPreviousSuggestions, null, typedWordInfo, false,
+            false, true, oldSuggestedWords.getInputStyle(), SuggestedWords.NOT_A_SEQUENCE_NUMBER);
     }
 
     /**
@@ -2321,13 +2320,13 @@ public final class InputLogic {
     private void restoreSinglishAutoCorrection(final Event event, final SuggestedWordInfo pendingAutoCorrection) {
         if (pendingAutoCorrection == null
                 || !SinglishCombiner.COMBINING_SPEC.equals(mWordComposer.getCombiningSpec())
-                || !mSuggestedWords.mWillAutoCorrect
+                || !mSuggestedWords.getWillAutoCorrect()
                 || mSuggestedWords.size() <= SuggestedWords.INDEX_OF_AUTO_CORRECTION
                 || mSuggestedWords.getInfo(SuggestedWords.INDEX_OF_AUTO_CORRECTION) != pendingAutoCorrection
-                || mSuggestedWords.mTypedWordInfo == null) return;
+                || mSuggestedWords.getTypedWordInfo() == null) return;
         final String typedWord = mWordComposer.getTypedWord();
         if (!TextUtils.equals(event.getTextToCommit(), typedWord)
-                || !typedWord.equals(mSuggestedWords.mTypedWordInfo.mWord)) return;
+                || !typedWord.equals(mSuggestedWords.getTypedWordInfo().getWord())) return;
         mWordComposer.setAutoCorrection(pendingAutoCorrection);
     }
 
@@ -2364,7 +2363,7 @@ public final class InputLogic {
         }
         final SuggestedWordInfo autoCorrectionOrNull = mWordComposer.getAutoCorrectionOrNull();
         final String typedWord = mWordComposer.getTypedWord();
-        final String stringToCommit = (autoCorrectionOrNull != null) ? autoCorrectionOrNull.mWord : typedWord;
+        final String stringToCommit = (autoCorrectionOrNull != null) ? autoCorrectionOrNull.getWord() : typedWord;
         if (stringToCommit != null) {
             final boolean isBatchMode = mWordComposer.isBatchMode();
             commitChosenWord(settingsValues, stringToCommit, LastComposedWord.COMMIT_TYPE_DECIDED_WORD, separator);
@@ -2379,7 +2378,7 @@ public final class InputLogic {
                         mConnection.getExpectedSelectionEnd() - stringToCommit.length(),
                         typedWord, stringToCommit));
                 final String prevWordsContext = (autoCorrectionOrNull != null)
-                        ? autoCorrectionOrNull.mPrevWordsContext
+                        ? autoCorrectionOrNull.getPrevWordsContext()
                         : "";
                 StatsUtils.onAutoCorrection(typedWord, stringToCommit, isBatchMode,
                         mDictionaryFacilitator, prevWordsContext);
@@ -2695,7 +2694,7 @@ public final class InputLogic {
         }
 
         var typedWordInfo = new SuggestedWordInfo(input, "", SuggestedWordInfo.MAX_SCORE, SuggestedWordInfo.KIND_TYPED,
-                                 Dictionary.DICTIONARY_USER_TYPED, SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE);
+                                 Dictionary.DICTIONARY_USER_TYPED, SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE, null);
         var suggestedWordInfos = new ArrayList<SuggestedWordInfo>(suggestions.size() + 1);
         suggestedWordInfos.add(typedWordInfo);
         for (var suggestion: suggestions) {
@@ -2704,9 +2703,8 @@ public final class InputLogic {
                 suggestedWordInfos.add(Suggest.useDefaultEmojiSkinTone(suggestion));
             }
         }
-        callback.onGetSuggestedWords(new SuggestedWords(suggestedWordInfos, suggestions.mRawSuggestions, typedWordInfo,
-                                     false /* typedWordValid */, false /* autoCorrectEnabled */,
-                                     false /* isObsoleteSuggestions */, InputStyle.TYPING, sequenceNumber));
+        callback.onGetSuggestedWords(new SuggestedWords(suggestedWordInfos, suggestions.getRawSuggestions(), typedWordInfo,
+                                     false, false, false, InputStyle.TYPING, sequenceNumber));
     }
 
     private void deleteTextReplacedByEmoji() {

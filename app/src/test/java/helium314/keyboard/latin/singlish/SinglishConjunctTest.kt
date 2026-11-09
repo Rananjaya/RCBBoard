@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.latin.singlish
 
-import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo
+import helium314.keyboard.latin.suggestions.SuggestedWordInfo
 import helium314.keyboard.latin.dictionary.Dictionary
 import helium314.keyboard.latin.makedict.DictIO
 import java.io.File
@@ -198,9 +198,9 @@ class SinglishConjunctTest {
             listOf(info("කර්ම", 300), info("කර්මය", 200), info("කරම", 50))
         }
         assertEquals("කර්ම", lookedUp) // the dictionary was asked for the form without ZWJ
-        assertEquals(listOf("කර්‍ම", "කර්‍මය", "කරම"), result.map { it.mWord })
-        assertEquals(listOf(300, 200, 100), result.map { it.mScore }) // best score kept for the duplicate
-        assertTrue(result.none { it.mWord.contains("ර්") && !it.mWord.contains("ර්‍") })
+        assertEquals(listOf("කර්‍ම", "කර්‍මය", "කරම"), result.map { it.word })
+        assertEquals(listOf(300, 200, 100), result.map { it.score }) // best score kept for the duplicate
+        assertTrue(result.none { it.word.contains("ර්") && !it.word.contains("ර්‍") })
     }
 
     @Test fun `compatible suggestions do not run a second lookup without repaya`() {

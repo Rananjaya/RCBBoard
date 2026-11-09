@@ -15,7 +15,6 @@ import androidx.annotation.NonNull;
 
 import helium314.keyboard.latin.dictionary.Dictionary;
 import helium314.keyboard.latin.NgramContext;
-import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo;
 import helium314.keyboard.latin.common.ComposedData;
 import helium314.keyboard.latin.common.Constants;
 import helium314.keyboard.latin.common.FileUtils;
@@ -26,6 +25,7 @@ import helium314.keyboard.latin.makedict.FormatSpec.DictionaryOptions;
 import helium314.keyboard.latin.makedict.UnsupportedFormatException;
 import helium314.keyboard.latin.makedict.WordProperty;
 import helium314.keyboard.latin.settings.SettingsValuesForSuggestion;
+import helium314.keyboard.latin.suggestions.SuggestedWordInfo;
 import com.android.inputmethod.latin.utils.BinaryDictionaryUtils;
 import helium314.keyboard.latin.utils.JniUtils;
 import com.android.inputmethod.latin.utils.WordInputEventForPersonalization;
@@ -311,13 +311,15 @@ public final class BinaryDictionary extends Dictionary {
             if (len > 0) {
                 SuggestedWordInfo info = new SuggestedWordInfo(
                     new String(session.mOutputCodePoints, start, len),
-                    "" /* prevWordsContext */,
+                    "",
                     (int)(session.mOutputScores[j] * weightForLocale),
                     session.mOutputTypes[j],
-                    this /* sourceDict */,
-                    session.mSpaceIndices[j] /* indexOfTouchPointOfSecondWord */,
-                    session.mOutputAutoCommitFirstWordConfidence[0]);
-                info.mOriginalScore = session.mOutputScores[j]; // no locale weight!
+                    this,
+                    session.mSpaceIndices[j],
+                    session.mOutputAutoCommitFirstWordConfidence[0],
+                    null
+                );
+                info.setOriginalScore(session.mOutputScores[j]); // no locale weight!
                 suggestions.add(info);
             }
         }
@@ -618,7 +620,7 @@ public final class BinaryDictionary extends Dictionary {
 
     @Override
     public boolean shouldAutoCommit(final SuggestedWordInfo candidate) {
-        return candidate.mAutoCommitFirstWordConfidence > CONFIDENCE_TO_AUTO_COMMIT;
+        return candidate.getAutoCommitFirstWordConfidence() > CONFIDENCE_TO_AUTO_COMMIT;
     }
 
     @Override
