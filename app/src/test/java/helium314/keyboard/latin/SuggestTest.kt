@@ -19,6 +19,8 @@ import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.InputPointers
 import helium314.keyboard.latin.common.StringUtils
 import helium314.keyboard.latin.dictionary.Dictionary
+import helium314.keyboard.latin.common.isEmoji
+import helium314.keyboard.latin.settings.Defaults
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.settings.SettingsValuesForSuggestion
 import helium314.keyboard.latin.utils.SuggestionResults
@@ -34,6 +36,8 @@ import java.util.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @Suppress("NonAsciiCharacters")
 @RunWith(RobolectricTestRunner::class)
@@ -588,6 +592,89 @@ class SuggestTest {
         val result4 = getSuggestedWords(false, "bur", CapsMode.MANUAL_LOCKED)
         assert(result4.mWillAutoCorrect)
         assertEquals(listOf("bur", "BUR", "BUT", "BIT", "BUY", "😢", "BUTTER"), result4.mSuggestedWordInfoList.map { it.mWord })
+    }
+
+    // ---- RCBBoard: the "Emoji suggestions" setting (suggest_emojis) ----
+
+    private fun setSuggestEmojis(enabled: Boolean) = latinIME.prefs().edit { putBoolean(Settings.PREF_SUGGEST_EMOJIS, enabled) }
+    private fun words(results: SuggestedWords) = results.mSuggestedWordInfoList.map { it.mWord }
+
+    @Test fun `emoji suggestions are enabled by default on a fresh install`() {
+        // reset() cleared all preferences, like a fresh install
+        assertTrue(Defaults.PREF_SUGGEST_EMOJIS)
+        assertFalse(latinIME.prefs().contains(Settings.PREF_SUGGEST_EMOJIS))
+        assertTrue(Settings.getValues().mSuggestEmojis)
+    }
+
+    @Test fun `emoji candidates appear while emoji suggestions are enabled`() {
+        tapTypingSuggestions = suggestionResults(listOf(suggestion("smile", 300), suggestion("smiled", 200), suggestion("😀", 100)))
+        val results = getSuggestedWords(false, "smil", CapsMode.OFF)
+        assertTrue("😀" in words(results), "${words(results)}")
+    }
+
+    @Test fun `no emoji candidates while emoji suggestions are disabled`() {
+        setSuggestEmojis(false)
+        assertFalse(Settings.getValues().mSuggestEmojis) // applied at once, no restart
+        tapTypingSuggestions = suggestionResults(listOf(suggestion("😀", 500), suggestion("smile", 300), suggestion("❤️", 250), suggestion("smiled", 200)))
+        val typing = getSuggestedWords(false, "smil", CapsMode.OFF)
+        assertTrue(words(typing).none { isEmoji(it) }, "${words(typing)}")
+        assertTrue(words(typing).containsAll(listOf("smile", "smiled")), "${words(typing)}")
+
+        // next word predictions, e.g. an emoji learned in the user history
+        nextWordSuggestions = suggestionResults(listOf(suggestion("😂", 300), suggestion("next", 200)))
+        val predictions = getSuggestedWords(false, "", CapsMode.OFF)
+        assertEquals(listOf("next"), words(predictions))
+
+        // gesture typing
+        glideTypingSuggestions = suggestionResults(listOf(suggestion("😀", 500), suggestion("hello", 400), suggestion("hell", 300)))
+        val gesture = getSuggestedWords(true, "", CapsMode.OFF)
+        assertTrue(words(gesture).none { isEmoji(it) }, "${words(gesture)}")
+        assertTrue(words(gesture).containsAll(listOf("hello", "hell")), "${words(gesture)}")
+    }
+
+    @Test fun `toggling emoji suggestions off and on applies immediately`() {
+        tapTypingSuggestions = suggestionResults(listOf(suggestion("smile", 300), suggestion("😀", 100)))
+        assertTrue("😀" in words(getSuggestedWords(false, "smil", CapsMode.OFF)))
+        setSuggestEmojis(false)
+        assertFalse("😀" in words(getSuggestedWords(false, "smil", CapsMode.OFF)))
+        setSuggestEmojis(true)
+        assertTrue("😀" in words(getSuggestedWords(false, "smil", CapsMode.OFF)))
+        setSuggestEmojis(false)
+        assertFalse("😀" in words(getSuggestedWords(false, "smil", CapsMode.OFF)))
+    }
+
+    @Test fun `emoji suggestions setting persists across a restart`() {
+        setSuggestEmojis(false)
+        val restarted = Robolectric.setupService(LatinIME::class.java) // new keyboard service, same stored preferences
+        assertFalse(restarted.prefs().getBoolean(Settings.PREF_SUGGEST_EMOJIS, Defaults.PREF_SUGGEST_EMOJIS))
+        assertFalse(Settings.getValues().mSuggestEmojis)
+        setSuggestEmojis(true)
+        Robolectric.setupService(LatinIME::class.java)
+        assertTrue(Settings.getValues().mSuggestEmojis)
+    }
+
+    @Test fun `English and Sinhala word suggestions are unchanged when emoji suggestions are disabled`() {
+        val english = listOf(suggestion("colour", 300), suggestion("color", 200), suggestion("colours", 100))
+        val si = Locale.forLanguageTag("si-LK")
+        val sinhala = listOf(suggestion("මම", 300, si), suggestion("මට", 200, si), suggestion("මගේ", 100, si))
+        for (enabled in listOf(true, false)) {
+            setSuggestEmojis(enabled)
+            currentTypingLocale = Locale.ENGLISH
+            tapTypingSuggestions = suggestionResults(english)
+            assertEquals(listOf("colo", "colour", "color", "colours"), words(getSuggestedWords(false, "colo", CapsMode.OFF)), "emoji on: $enabled")
+            currentTypingLocale = si
+            tapTypingSuggestions = suggestionResults(sinhala)
+            assertEquals(listOf("ම", "මම", "මට", "මගේ"), words(getSuggestedWords(false, "ම", CapsMode.OFF)), "emoji on: $enabled")
+        }
+    }
+
+    @Test fun `main dictionaries are reloaded when the emoji setting changed since they were loaded`() {
+        assertFalse(LatinIME.emojiSettingChangedSinceMainDictionaryLoad(null, true)) // not loaded yet: normal first load
+        assertFalse(LatinIME.emojiSettingChangedSinceMainDictionaryLoad(null, false))
+        assertFalse(LatinIME.emojiSettingChangedSinceMainDictionaryLoad(true, true))
+        assertFalse(LatinIME.emojiSettingChangedSinceMainDictionaryLoad(false, false))
+        assertTrue(LatinIME.emojiSettingChangedSinceMainDictionaryLoad(true, false)) // turned off: remove the emoji dictionary
+        assertTrue(LatinIME.emojiSettingChangedSinceMainDictionaryLoad(false, true)) // turned on: load it again
     }
 
     private fun getSuggestedWords(gesture: Boolean, typedWord: String, capsMode: CapsMode): SuggestedWords {

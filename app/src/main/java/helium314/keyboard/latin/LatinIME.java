@@ -569,7 +569,9 @@ public class LatinIME extends InputMethodService implements
         final ArrayList<Locale> locales = new ArrayList<>();
         locales.add(subtypeLocale);
         locales.addAll(mSettings.getCurrent().mSecondaryLocales);
-        if (mDictionaryFacilitator.usesSameSettings(
+        final boolean emojiSettingChanged = emojiSettingChangedSinceMainDictionaryLoad(
+                mMainDictionariesSuggestEmojis, mSettings.getCurrent().mSuggestEmojis);
+        if (!emojiSettingChanged && mDictionaryFacilitator.usesSameSettings(
                 locales,
                 mSettings.getCurrent().mUseContactsDictionary,
                 mSettings.getCurrent().mUseAppsDictionary,
@@ -577,7 +579,19 @@ public class LatinIME extends InputMethodService implements
         )) {
             return;
         }
-        resetDictionaryFacilitator(subtypeLocale);
+        resetDictionaryFacilitator(subtypeLocale, emojiSettingChanged);
+    }
+
+    /**
+     * RCBBoard: the "Emoji suggestions" setting the main dictionaries were loaded with, null before
+     * the first load. The emoji dictionary is part of the main dictionaries and is only added or removed
+     * when they are loaded, so a changed setting needs a reload (Suggest also hides emojis while it is off).
+     */
+    @Nullable private Boolean mMainDictionariesSuggestEmojis = null;
+
+    /* package private */ static boolean emojiSettingChangedSinceMainDictionaryLoad(
+            @Nullable final Boolean loadedWithSuggestEmojis, final boolean suggestEmojis) {
+        return loadedWithSuggestEmojis != null && loadedWithSuggestEmojis != suggestEmojis;
     }
 
     /**
@@ -585,15 +599,17 @@ public class LatinIME extends InputMethodService implements
      * the current settings values.
      *
      * @param locale the locale
+     * @param forceReloadMainDictionary also reload already loaded main dictionaries
      */
     // TODO: make sure the current settings always have the right locales, and read from them.
-    private void resetDictionaryFacilitator(@NonNull Locale locale) {
+    private void resetDictionaryFacilitator(@NonNull Locale locale, boolean forceReloadMainDictionary) {
         SettingsValues settingsValues = mSettings.getCurrent();
         mReceiver.updateDictionaryObservers(this);
         try {
             mDictionaryFacilitator.resetDictionaries(this, locale,
                 settingsValues.mUseContactsDictionary, settingsValues.mUseAppsDictionary,
-                settingsValues.mUsePersonalizedDicts, false, "", this);
+                settingsValues.mUsePersonalizedDicts, forceReloadMainDictionary, "", this);
+            mMainDictionariesSuggestEmojis = settingsValues.mSuggestEmojis;
         } catch (Throwable e) {
             // this should not happen, but in case it does we at least want to show a keyboard
             Log.e(TAG, "Could not reset dictionary facilitator, please fix ASAP", e);
@@ -609,6 +625,7 @@ public class LatinIME extends InputMethodService implements
         mDictionaryFacilitator.resetDictionaries(this, mDictionaryFacilitator.getMainLocale(),
                 settingsValues.mUseContactsDictionary, settingsValues.mUseAppsDictionary,
                 settingsValues.mUsePersonalizedDicts, true, "", this);
+        mMainDictionariesSuggestEmojis = settingsValues.mSuggestEmojis;
         mKeyboardSwitcher.setThemeNeedsReload(); // necessary for emoji search
         EmojiPalettesView.closeDictionaryFacilitator();
         EmojiSearchActivity.Companion.closeDictionaryFacilitator();
