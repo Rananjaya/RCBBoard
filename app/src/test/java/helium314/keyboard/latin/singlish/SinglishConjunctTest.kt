@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.latin.singlish
 
-import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo
+import helium314.keyboard.latin.suggestions.SuggestedWordInfo
 import helium314.keyboard.latin.dictionary.Dictionary
 import helium314.keyboard.latin.makedict.DictIO
 import java.io.File
