@@ -106,10 +106,10 @@ object SinhalaLookup {
         if (primary.isNullOrEmpty()) return normalized
         val merged = LinkedHashMap<String, SuggestedWordInfo>()
         for (info in primary) {
-            merged[dedupeKey(info.mWord)] = info
+            merged[dedupeKey(info.word)] = info
         }
         for (info in normalized) {
-            val key = dedupeKey(info.mWord)
+            val key = dedupeKey(info.word)
             val existing = merged[key]
             if (existing == null || preferNormalized(existing, info)) {
                 merged[key] = info
@@ -119,8 +119,8 @@ object SinhalaLookup {
     }
 
     private fun preferNormalized(existing: SuggestedWordInfo, candidate: SuggestedWordInfo): Boolean {
-        if (candidate.mScore != existing.mScore) return candidate.mScore > existing.mScore
-        return isNfc(candidate.mWord) && !isNfc(existing.mWord)
+        if (candidate.score != existing.score) return candidate.score > existing.score
+        return isNfc(candidate.word) && !isNfc(existing.word)
     }
 
     private fun isNfc(word: String): Boolean =

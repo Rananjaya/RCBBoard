@@ -5,6 +5,7 @@ import helium314.keyboard.event.Event
 import helium314.keyboard.event.SinglishCombiner
 import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.StringUtils
+import helium314.keyboard.latin.dictionary.Dictionary
 import helium314.keyboard.latin.suggestions.SuggestedWordInfo
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -47,7 +48,7 @@ class WordComposerTest {
     @Test fun `copy keeps the other composing state`() {
         val wc = composer(SinglishCombiner.COMBINING_SPEC, "kaarya")
         wc.setAutoCorrection(SuggestedWordInfo("කාර්ය", "", 1, SuggestedWordInfo.KIND_CORRECTION,
-            null, SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE))
+            Dictionary.PhonyDictionary("null"), SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE))
         val copy = wc.copy()
         assertEquals(wc.typedWord, copy.typedWord)
         assertEquals(wc.isComposingWord, copy.isComposingWord)

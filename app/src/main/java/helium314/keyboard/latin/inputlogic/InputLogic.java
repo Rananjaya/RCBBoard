@@ -287,7 +287,7 @@ public final class InputLogic {
         }
 
         SuggestedWords suggestedWords = mSuggestedWords;
-        String suggestion = suggestionInfo.mWord;
+        String suggestion = suggestionInfo.getWord();
         // If this is a punctuation picked from the suggestion strip, pass it to onCodeInput
         if (suggestion.length() == 1 && suggestedWords.isPunctuationSuggestions()) {
             // We still want to log a suggestion click.
@@ -336,7 +336,7 @@ public final class InputLogic {
             mSuggestionStripViewAccessor.setNeutralSuggestionStrip();
             inputTransaction.requireShiftUpdate(InputTransaction.SHIFT_UPDATE_NOW);
             resetComposingState(true /* alsoResetLastComposedWord */);
-            mConnection.commitCompletion(suggestionInfo.mApplicationSpecifiedCompletionInfo);
+            mConnection.commitCompletion(suggestionInfo.getApplicationSpecifiedCompletionInfo());
             mConnection.endBatchEdit();
             return inputTransaction;
         }
@@ -361,7 +361,7 @@ public final class InputLogic {
         handler.postUpdateSuggestionStrip(InputStyle.NONE);
 
         StatsUtils.onPickSuggestionManually(mSuggestedWords, suggestionInfo, mDictionaryFacilitator);
-        StatsUtils.onWordCommitSuggestionPickedManually(suggestionInfo.mWord, mWordComposer.isBatchMode());
+        StatsUtils.onWordCommitSuggestionPickedManually(suggestionInfo.getWord(), mWordComposer.isBatchMode());
         return inputTransaction;
     }
 
@@ -1734,7 +1734,7 @@ public final class InputLogic {
                 final String typedWordString = mWordComposer.getTypedWord();
                 final SuggestedWordInfo typedWordInfo = new SuggestedWordInfo(
                     typedWordString, "", SuggestedWordInfo.MAX_SCORE, SuggestedWordInfo.KIND_TYPED,
-                    Dictionary.DICTIONARY_USER_TYPED, SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE
+                    Dictionary.DICTIONARY_USER_TYPED, SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE, null
                 );
                 // Show new suggestions if we have at least one. Otherwise keep the old
                 // suggestions with the new typed word. Exception: if the length of the
@@ -1830,10 +1830,10 @@ public final class InputLogic {
         final ArrayList<SuggestedWordInfo> suggestions = new ArrayList<>();
         final String typedWordString = range.mWord.toString();
         final SuggestedWordInfo typedWordInfo = new SuggestedWordInfo(typedWordString,
-                "" /* prevWordsContext */, SuggestedWords.MAX_SUGGESTIONS + 1,
+                "", SuggestedWords.MAX_SUGGESTIONS + 1,
                 SuggestedWordInfo.KIND_TYPED, Dictionary.DICTIONARY_USER_TYPED,
-                SuggestedWordInfo.NOT_AN_INDEX /* indexOfTouchPointOfSecondWord */,
-                SuggestedWordInfo.NOT_A_CONFIDENCE /* autoCommitFirstWordConfidence */);
+                SuggestedWordInfo.NOT_AN_INDEX,
+                SuggestedWordInfo.NOT_A_CONFIDENCE, null);
         suggestions.add(typedWordInfo);
         int i = 0;
         for (final SuggestionSpan span : range.getSuggestionSpansAtWord()) {
@@ -1841,11 +1841,10 @@ public final class InputLogic {
                 ++i;
                 if (!TextUtils.equals(s, typedWordString)) {
                     suggestions.add(new SuggestedWordInfo(s,
-                            "" /* prevWordsContext */, SuggestedWords.MAX_SUGGESTIONS - i,
+                            "", SuggestedWords.MAX_SUGGESTIONS - i,
                             SuggestedWordInfo.KIND_RESUMED, Dictionary.DICTIONARY_RESUMED,
-                            SuggestedWordInfo.NOT_AN_INDEX /* indexOfTouchPointOfSecondWord */,
-                            SuggestedWordInfo.NOT_A_CONFIDENCE
-                                    /* autoCommitFirstWordConfidence */));
+                            SuggestedWordInfo.NOT_AN_INDEX,
+                            SuggestedWordInfo.NOT_A_CONFIDENCE, null));
                 }
             }
         }
@@ -2327,7 +2326,7 @@ public final class InputLogic {
                 || mSuggestedWords.mTypedWordInfo == null) return;
         final String typedWord = mWordComposer.getTypedWord();
         if (!TextUtils.equals(event.getTextToCommit(), typedWord)
-                || !typedWord.equals(mSuggestedWords.mTypedWordInfo.mWord)) return;
+                || !typedWord.equals(mSuggestedWords.mTypedWordInfo.getWord())) return;
         mWordComposer.setAutoCorrection(pendingAutoCorrection);
     }
 
@@ -2364,7 +2363,7 @@ public final class InputLogic {
         }
         final SuggestedWordInfo autoCorrectionOrNull = mWordComposer.getAutoCorrectionOrNull();
         final String typedWord = mWordComposer.getTypedWord();
-        final String stringToCommit = (autoCorrectionOrNull != null) ? autoCorrectionOrNull.mWord : typedWord;
+        final String stringToCommit = (autoCorrectionOrNull != null) ? autoCorrectionOrNull.getWord() : typedWord;
         if (stringToCommit != null) {
             final boolean isBatchMode = mWordComposer.isBatchMode();
             commitChosenWord(settingsValues, stringToCommit, LastComposedWord.COMMIT_TYPE_DECIDED_WORD, separator);
@@ -2379,7 +2378,7 @@ public final class InputLogic {
                         mConnection.getExpectedSelectionEnd() - stringToCommit.length(),
                         typedWord, stringToCommit));
                 final String prevWordsContext = (autoCorrectionOrNull != null)
-                        ? autoCorrectionOrNull.mPrevWordsContext
+                        ? autoCorrectionOrNull.getPrevWordsContext()
                         : "";
                 StatsUtils.onAutoCorrection(typedWord, stringToCommit, isBatchMode,
                         mDictionaryFacilitator, prevWordsContext);
@@ -2695,7 +2694,7 @@ public final class InputLogic {
         }
 
         var typedWordInfo = new SuggestedWordInfo(input, "", SuggestedWordInfo.MAX_SCORE, SuggestedWordInfo.KIND_TYPED,
-                                 Dictionary.DICTIONARY_USER_TYPED, SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE);
+                                 Dictionary.DICTIONARY_USER_TYPED, SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE, null);
         var suggestedWordInfos = new ArrayList<SuggestedWordInfo>(suggestions.size() + 1);
         suggestedWordInfos.add(typedWordInfo);
         for (var suggestion: suggestions) {

@@ -76,13 +76,13 @@ object SinglishRepaya {
         if (withoutZwj != typedWord) all.addAll(lookup(withoutZwj))
         val byWord = LinkedHashMap<String, SuggestedWordInfo>()
         for (info in all) {
-            val word = withRepayaZwj(info.mWord)
-            val converted = if (word == info.mWord) info else SuggestedWordInfo(word, info.mPrevWordsContext,
-                info.mScore, info.mKindAndFlags, info.mSourceDict, info.mIndexOfTouchPointOfSecondWord,
-                info.mAutoCommitFirstWordConfidence)
+            val word = withRepayaZwj(info.word)
+            val converted = if (word == info.word) info else SuggestedWordInfo(word, info.prevWordsContext,
+                info.score, info.kindAndFlags, info.sourceDict, info.indexOfTouchPointOfSecondWord,
+                info.autoCommitFirstWordConfidence)
             val existing = byWord[word]
-            if (existing == null || converted.mScore > existing.mScore) byWord[word] = converted
+            if (existing == null || converted.score > existing.score) byWord[word] = converted
         }
-        return ArrayList(byWord.values.sortedByDescending { it.mScore }) // stable: equal scores keep their order
+        return ArrayList(byWord.values.sortedByDescending { it.score }) // stable: equal scores keep their order
     }
 }

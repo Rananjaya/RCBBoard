@@ -5,6 +5,7 @@ import helium314.keyboard.latin.suggestions.SuggestedWordInfo
 import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.LocaleUtils
 import helium314.keyboard.latin.define.DecoderSpecificConstants
+import helium314.keyboard.latin.dictionary.Dictionary
 import helium314.keyboard.latin.dictionary.DictionaryInfoUtils
 import helium314.keyboard.latin.makedict.DictIO
 import helium314.keyboard.latin.makedict.FusionDictionary
@@ -123,7 +124,7 @@ class SinhalaDictionaryTest {
         )
         assertNotNull(merged)
         assertEquals(1, merged.size)
-        assertEquals("අපේ", merged[0].mWord)
+        assertEquals("අපේ", merged[0].word)
     }
 
     @Test fun normalizedQueryUsesUnknownCoordinates() {
@@ -171,7 +172,7 @@ class SinhalaDictionaryTest {
             || Character.getType(code) == Character.COMBINING_SPACING_MARK.toInt()
 
     private fun suggestion(word: String, score: Int) =
-        SuggestedWordInfo(word, "", score, 0, null, 0, 0)
+        SuggestedWordInfo(word, "", score, 0, Dictionary.PhonyDictionary("null"), 0, 0)
 
     private fun loadCombined() = DictIO.readCombinedDictionary(combinedFile().path)
 
