@@ -29,8 +29,10 @@ class PunctuationSuggestions private constructor(punctuationsList: List<Suggeste
     override fun getWord(index: Int): String {
         val keySpec = super.getWord(index)
         val code = KeySpecParser.getCode(keySpec)
+        // RCBBoard: no !!, KeySpecParser returns null for some (user-defined) specs; the Java version
+        // passed that null on, so an empty text keeps that behaviour without crashing the keyboard
         return (if (code == KeyCode.MULTIPLE_CODE_POINTS)
-            KeySpecParser.getOutputText(keySpec, code)!!
+            KeySpecParser.getOutputText(keySpec, code).orEmpty()
         else
             StringUtils.newSingleCodePointString(code))
     }
@@ -40,7 +42,8 @@ class PunctuationSuggestions private constructor(punctuationsList: List<Suggeste
      * Note that [SuggestedWords.getWord] returns a punctuation key specification text.
      * The displayed text should be gotten by parsing the key specification.
      */
-    override fun getLabel(index: Int): String = KeySpecParser.getLabel(super.getWord(index))!!
+    // RCBBoard: no !!, the label is null for specs with an icon (possible in the user's punctuation suggestions)
+    override fun getLabel(index: Int): String = KeySpecParser.getLabel(super.getWord(index)).orEmpty()
 
     /**
      * {@inheritDoc}

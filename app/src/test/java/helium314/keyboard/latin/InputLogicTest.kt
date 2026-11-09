@@ -1207,6 +1207,25 @@ class InputLogicTest {
         assertEquals("ගෙඩර ", text)
     }
 
+    @Test fun `singlish hand-back restores only the very correction object of the current suggestions`() {
+        // SuggestedWordInfo is a Kotlin data class since the upstream migration: a copy is equal, but restoring
+        // must still check identity (InputLogic.restoreSinglishAutoCorrection uses != in Java)
+        singlishWithAutoCorrect()
+        chainInput("gedara")
+        prepareSinglishCorrection("ගෙඩර", "ගෙදර")
+        val prepared = inputLogic.mSuggestedWords.getInfo(SuggestedWords.INDEX_OF_AUTO_CORRECTION)
+        val equalCopy = prepared.copy()
+        assertEquals(prepared, equalCopy)
+        composer.setAutoCorrection(equalCopy) // same content, different object
+        input(' ')
+        assertEquals("ගෙඩර ", text) // not restored, so the transliteration is committed
+
+        chainInput("gedara")
+        prepareSinglishCorrection("ගෙඩර", "ගෙදර") // the composer gets the suggestions' own object
+        input(' ')
+        assertEquals("ගෙඩර ගෙදර ", text)
+    }
+
     @Test fun `english and native sinhala auto-correction are unchanged`() {
         setInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_CORRECT)
         chainInput("hullo")
