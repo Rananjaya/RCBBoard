@@ -13,9 +13,9 @@ develop @ abc123 ──► Development (automatic) ──► QA (you start it) �
 | Stage | Workflow | Starts | Builds | App on the phone |
 | --- | --- | --- | --- | --- |
 | Checks | `.github/workflows/ci.yml` | every pull request to `develop` | tests + debug build | – |
-| Development | `.github/workflows/development.yml` | every push to `develop` (a merged pull request), or by hand | `:app:assembleDebug` | **RCBBoard debug** (`com.ranger.myheliboard.debug`) |
-| QA | `.github/workflows/qa.yml` | by hand, with a commit SHA | `:app:assembleDebug` | **RCBBoard debug** (`com.ranger.myheliboard.debug`) |
-| Production | `.github/workflows/release.yml` | by hand, with the QA-approved commit SHA | `:app:assembleRelease` | **RCBBoard** (`com.ranger.myheliboard`) |
+| Development | `.github/workflows/development.yml` | every push to `develop` (a merged pull request), or by hand | `:app:assembleDebug` | **RCBBoard debug** (`com.rananjaya.rcbboard.debug`) |
+| QA | `.github/workflows/qa.yml` | by hand, with a commit SHA | `:app:assembleDebug` | **RCBBoard debug** (`com.rananjaya.rcbboard.debug`) |
+| Production | `.github/workflows/release.yml` | by hand, with the QA-approved commit SHA | `:app:assembleRelease` | **RCBBoard** (`com.rananjaya.rcbboard`) |
 
 Development and QA build the same existing `debug` build type, so the QA APK is the same app as the Development APK and replaces it. The debug app and the production app have different application IDs, so both can be installed on the same phone.
 
@@ -42,7 +42,7 @@ Runs automatically after every push to `develop`, which is what merging a pull r
 
 1. Runs the CI checks (release scripts, unit tests, native tests) on exactly the pushed commit.
 2. Builds the Debug APK from that commit (`:app:assembleDebug`) with version `X.Y.Z-dev.<run>+<commit>`.
-3. Signs it with the [RCBBoard debug key](#debug-signing-key) and verifies it: v1/v2 signatures, the debug key's certificate, app ID `com.ranger.myheliboard.debug`, the expected version, minSdk 21 and all four ABIs.
+3. Signs it with the [RCBBoard debug key](#debug-signing-key) and verifies it: v1/v2 signatures, the debug key's certificate, app ID `com.rananjaya.rcbboard.debug`, the expected version, minSdk 21 and all four ABIs.
 4. Uploads `RCBBoard-dev-X.Y.Z-dev.<run>-<commit>.apk` (kept 14 days).
 
 **Getting the Development APK:** open the run (**Actions → Development**) and download the APK from the run summary or from the *Artifacts* section at the bottom. It downloads as an `.apk` file (not a zip); you must be signed in to GitHub. The summary also shows the full commit SHA for the next stage.
@@ -81,7 +81,7 @@ The release workflow:
 2. **Determines the version** of exactly that commit (see [Versioning](#versioning)). If only documentation, CI or tests changed since the last release, nothing is published. If the newest tag has no published release, it stops with recovery steps (see [Recovering a failed release](#recovering-a-failed-release)).
 3. **Waits for approval** in the `release` environment.
 4. **Builds** the universal release APK from exactly that commit (`:app:assembleRelease`, all four ABIs, no Gradle cache).
-5. **Signs** it with the existing production key from the `release` environment secrets and **verifies** it: v1 and v2 signatures, exactly one signer whose certificate SHA-256 is `0b01373116d4a7b57646c4c7e2ffc28af91870bdbeabb4b8c05c00f313e2291b`, package `com.ranger.myheliboard`, version, minSdk 21, all four ABIs.
+5. **Signs** it with the existing production key from the `release` environment secrets and **verifies** it: v1 and v2 signatures, exactly one signer whose certificate SHA-256 is `0b01373116d4a7b57646c4c7e2ffc28af91870bdbeabb4b8c05c00f313e2291b`, package `com.rananjaya.rcbboard`, version, minSdk 21, all four ABIs.
 6. **Tags** exactly that commit as `rcbboard-vX.Y.Z`.
 7. **Publishes** a GitHub Release with `RCBBoard-X.Y.Z.apk` and `SHA256SUMS.txt`. The notes list the version, commit, QA run, build date, installation steps and the certificate fingerprint (no commit messages). It is marked *latest* only if no newer release is published.
 
@@ -200,10 +200,28 @@ These settings are made by the repository owner on github.com; the workflows do 
 ## Download and install a production release
 
 1. Open [Releases](https://github.com/Rananjaya/RCBBoard/releases) and download `RCBBoard-X.Y.Z.apk` on the Android device.
-2. Open the file and allow installing from that source if asked. It updates an existing RCBBoard installation and keeps settings and learned words.
+2. Open the file and allow installing from that source if asked. It updates an existing RCBBoard installation and keeps settings and learned words (except when coming from 4.10.2 or older, see below).
 3. Enable RCBBoard in *Settings → System → Keyboard → On-screen keyboard*.
 
 To check a download: `apksigner verify --print-certs RCBBoard-X.Y.Z.apk` must show the production certificate SHA-256 above, and `shasum -a 256 -c SHA256SUMS.txt` checks the file.
+
+## Application ID
+
+| Build | Application ID |
+| --- | --- |
+| Production (`release`, `nouserlib`, `runTests`) | `com.rananjaya.rcbboard` |
+| Debug (`debug`, `debugNoMinify`): Development, QA, local debug builds | `com.rananjaya.rcbboard.debug` |
+
+It is set once, as `applicationId` in `app/build.gradle.kts` (the debug build types add `.debug`). The other places that must match it are the content provider authorities in `app/src/main/res/values/clip_provider.xml` and `gesture_data.xml` (and their copies in `app/src/debug` and `app/src/debugNoMinify`, with `.debug`), `APP_PACKAGE` in `release.yml` and `APP_ID` in `development.yml` and `qa.yml`. `sign_release.py` refuses an APK whose package differs. The code namespace `helium314.keyboard.latin` is not the application ID and stays unchanged.
+
+**The application ID is permanent.** It is registered with Google for developer verification and identifies the app on every device; never change it again.
+
+**Change from `com.ranger.myheliboard` (RCBBoard 4.10.2 and older).** Android treats a new application ID as a different app:
+
+- The new version does **not** update an installed `com.ranger.myheliboard` (or `com.ranger.myheliboard.debug`); it installs **next to** it.
+- The new app starts **without** the old app's settings, learned words, dictionaries or clipboard history; nothing is migrated automatically.
+- To move the data: in the old app, *Settings → Advanced → Backup and restore → Backup*; in the new app, restore that file. Backups do not contain the application ID, so they restore into the new app. Then enable the new keyboard and uninstall the old app.
+- The signing certificate is unchanged (`0b013731…`), so later releases update the new app normally.
 
 ## Troubleshooting
 
