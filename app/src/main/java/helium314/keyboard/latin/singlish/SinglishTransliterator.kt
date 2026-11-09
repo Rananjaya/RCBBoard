@@ -7,8 +7,8 @@ import java.text.Normalizer
  * RCBBoard Singlish: converts phonetically typed Latin letters to Sinhala.
  *
  * Pure and deterministic (no Android, no state between calls), so the same input always gives the
- * same output. The mapping follows the widely used Helakuru-style convention and is written for
- * RCBBoard; the full table and its references are in docs/singlish.md.
+ * same output. The mapping is RCBBoard's own phonetic table. The full table and its references
+ * are in docs/singlish.md.
  *
  * How it works:
  *  1. The input is split into tokens by longest match against [SinglishRules] (`zdh` before `zd`
