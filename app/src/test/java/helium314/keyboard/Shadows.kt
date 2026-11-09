@@ -133,7 +133,9 @@ class ShadowInputMethodService {
         var composingStart = -1
         var composingEnd = -1
         var currentInputType = InputType.TYPE_CLASS_TEXT
+        var lastEditorAction: Int? = null // RCBBoard: the editor action the keyboard performed
         var privateImeOptions: String? = null
+        var imeOptions = 0 // RCBBoard: e.g. IME_FLAG_NO_ENTER_ACTION for multi-line fields
 
         // convenience for access
         val textBeforeCursor get() = text.substring(0, selectionStart)
@@ -154,6 +156,8 @@ class ShadowInputMethodService {
             composingEnd = -1
             currentInputType = InputType.TYPE_CLASS_TEXT
             privateImeOptions = null
+            imeOptions = 0
+            lastEditorAction = null
         }
     }
 
@@ -161,6 +165,7 @@ class ShadowInputMethodService {
     fun getCurrentInputEditorInfo() = EditorInfo().apply {
         inputType = currentInputType
         privateImeOptions = ShadowInputMethodService.privateImeOptions
+        imeOptions = ShadowInputMethodService.imeOptions
         // anything else?
     }
     @Implementation
@@ -320,7 +325,7 @@ class ShadowInputMethodService {
         override fun getCursorCapsMode(p0: Int): Int = TODO("Not yet implemented")
         override fun deleteSurroundingTextInCodePoints(p0: Int, p1: Int): Boolean = TODO("Not yet implemented")
         override fun commitCompletion(p0: CompletionInfo?): Boolean = TODO("Not yet implemented")
-        override fun performEditorAction(p0: Int): Boolean = TODO("Not yet implemented")
+        override fun performEditorAction(p0: Int): Boolean { lastEditorAction = p0; return true }
         override fun performContextMenuAction(p0: Int): Boolean = TODO("Not yet implemented")
         override fun clearMetaKeyStates(p0: Int): Boolean = TODO("Not yet implemented")
         override fun reportFullscreenMode(p0: Boolean): Boolean = TODO("Not yet implemented")

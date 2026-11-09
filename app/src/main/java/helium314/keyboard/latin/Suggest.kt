@@ -21,6 +21,7 @@ import helium314.keyboard.latin.define.DecoderSpecificConstants.SHOULD_REMOVE_PR
 import helium314.keyboard.latin.dictionary.Dictionary
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.settings.SettingsValuesForSuggestion
+import helium314.keyboard.latin.singlish.SinglishAutoCorrection
 import helium314.keyboard.latin.singlish.SinglishCandidates
 import helium314.keyboard.latin.singlish.SinglishRepaya
 import helium314.keyboard.latin.suggestions.SuggestionStripView
@@ -102,7 +103,7 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
         val firstOccurrenceOfTypedWordInSuggestions = SuggestedWordInfo.removeDupsAndTypedWord(capitalizedTypedWord, suggestionsContainer)
         makeFirstTwoSuggestionsNonEmoji(suggestionsContainer)
 
-        val (allowsToBeAutoCorrected, hasAutoCorrection) = shouldBeAutoCorrected(
+        val (allowsToBeAutoCorrected, nativeHasAutoCorrection) = shouldBeAutoCorrected(
             trailingSingleQuotesCount,
             capitalizedTypedWord,
             suggestionsContainer.firstOrNull(),
@@ -119,9 +120,17 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
             firstOccurrenceOfTypedWordInSuggestions,
             typedWordFirstOccurrenceWordInfo
         )
-        // RCBBoard Singlish: added after the auto-correction decision, so that it stays unchanged
-        if (typedWordString.isNotEmpty() && wordComposer.combiningSpec == SinglishCombiner.COMBINING_SPEC)
-            addSinglishSpellings(typedWordString, suggestionsContainer, if (hasAutoCorrection) 1 else 0)
+        // RCBBoard Singlish: dictionary spellings (phase 2B stage 2), and the conservative auto-correction to one
+        // of them (stage 3), which replaces the native decision on the Singlish keyboard
+        val isSinglish = typedWordString.isNotEmpty() && wordComposer.combiningSpec == SinglishCombiner.COMBINING_SPEC
+        val hasAutoCorrection = if (isSinglish) {
+            val spellings = singlishSpellings(typedWordString)
+            val correction = if (canAutoCorrectSinglish(isCorrectionEnabled, wordComposer))
+                    SinglishAutoCorrection.choose(typedWordString, spellings)
+                else null
+            addSinglishSpellings(typedWordString, suggestionsContainer, spellings, correction)
+            correction != null
+        } else nativeHasAutoCorrection
         val typedWordInfo = SuggestedWordInfo(typedWordString, "", SuggestedWordInfo.MAX_SCORE,
             SuggestedWordInfo.KIND_TYPED, typedWordFirstOccurrenceWordInfo?.mSourceDict ?: Dictionary.DICTIONARY_USER_TYPED,
             SuggestedWordInfo.NOT_AN_INDEX , SuggestedWordInfo.NOT_A_CONFIDENCE)
@@ -168,19 +177,36 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
     }
 
     /**
-     * RCBBoard Singlish (phase 2B): dictionary spellings of the transliterated [typedWord] that differ
-     * in ambiguous letters (ගෙඩර -> ගෙදර, see [SinglishCandidates]), cheapest first, at most
-     * [MAX_SINGLISH_SPELLINGS]. They are inserted into [suggestions] at [index] and replace any
-     * other entry of the same word. The typed word itself is not one of them; it stays the typed word.
+     * RCBBoard Singlish (phase 2B): the dictionary-checked spellings of the transliterated [typedWord]
+     * (see [SinglishCandidates]), cheapest first, including [typedWord] itself with cost 0 if it is valid.
+     * Looked up once per suggestion update and used both for the strip and for the auto-correction.
+     */
+    private fun singlishSpellings(typedWord: String): List<SinglishCandidates.Candidate> =
+        if (typedWord.codePointCount(0, typedWord.length) < MIN_SINGLISH_SPELLING_LENGTH) emptyList()
+        else SinglishCandidates.candidates(typedWord, mDictionaryFacilitator::isValidSuggestionWord)
+
+    /**
+     * RCBBoard Singlish (phase 2B stage 3): the general conditions of [shouldBeAutoCorrected] that also
+     * apply to the Singlish auto-correction: auto-correction enabled for this field, a word being
+     * composed (not resumed, no digits), and a main dictionary.
+     */
+    private fun canAutoCorrectSinglish(isCorrectionEnabled: Boolean, wordComposer: WordComposer) =
+        isCorrectionEnabled && wordComposer.isComposingWord && !wordComposer.isResumed && !wordComposer.hasDigits()
+            && mDictionaryFacilitator.hasAtLeastOneInitializedMainDictionary()
+
+    /**
+     * RCBBoard Singlish (phase 2B): puts at most [MAX_SINGLISH_SPELLINGS] of the dictionary [spellings]
+     * of [typedWord] (ගෙඩර -> ගෙදර) first in [suggestions], cheapest first, replacing any other entry of
+     * the same word. The typed word itself is not one of them; it stays the typed word.
+     * [correction] (stage 3), if any, is the unique cheapest spelling and therefore the first one,
+     * which makes it the auto-correction (index 1 once the typed word is added in front).
      * Only reads the dictionaries; nothing is stored or logged.
      */
-    private fun addSinglishSpellings(typedWord: String, suggestions: ArrayList<SuggestedWordInfo>, index: Int) {
-        if (typedWord.codePointCount(0, typedWord.length) < MIN_SINGLISH_SPELLING_LENGTH) return
-        // entries before index (the auto-correction) stay where they are
-        val fixed = suggestions.take(index).mapTo(HashSet()) { it.mWord }
-        val spellings = SinglishCandidates.candidates(typedWord, mDictionaryFacilitator::isValidSuggestionWord)
-            .filter { it.cost > 0 && it.word != typedWord && it.word !in fixed }
-            .take(MAX_SINGLISH_SPELLINGS)
+    private fun addSinglishSpellings(typedWord: String, suggestions: ArrayList<SuggestedWordInfo>,
+                                     candidates: List<SinglishCandidates.Candidate>, correction: String?) {
+        // the correction is the cheapest spelling and comes first anyway; sorting it first just makes sure
+        val spellings = candidates.filter { it.cost > 0 && it.word != typedWord }
+            .sortedBy { it.word != correction }.take(MAX_SINGLISH_SPELLINGS)
         if (spellings.isEmpty()) return
         val infos = spellings.map { spelling ->
             // keep the dictionary's own entry if the normal lookup found the word too
@@ -191,7 +217,7 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
         }
         val words = spellings.mapTo(HashSet()) { it.word }
         suggestions.removeAll { it.mWord in words }
-        suggestions.addAll(index.coerceAtMost(suggestions.size), infos)
+        suggestions.addAll(0, infos)
     }
 
     // returns [allowsToBeAutoCorrected, hasAutoCorrection]

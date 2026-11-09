@@ -769,7 +769,9 @@ public final class InputLogic {
                 // added in the hangul branch, createEventChainFromSequence
                 // this introduces issues like space being added behind cursor, or input deleting
                 // a word, but the keepCursorPosition applyProcessedEvent seems to help here
+                final SuggestedWordInfo pendingAutoCorrection = mWordComposer.getAutoCorrectionOrNull();
                 mWordComposer.applyProcessedEvent(event, true);
+                restoreSinglishAutoCorrection(event, pendingAutoCorrection);
                 break;
             case KeyCode.CLIPBOARD_SELECT_ALL:
                 mConnection.selectAll();
@@ -2305,6 +2307,28 @@ public final class InputLogic {
             commitChosenWord(settingsValues, typedWord, LastComposedWord.COMMIT_TYPE_USER_TYPED_WORD, separatorString);
             StatsUtils.onWordCommitUserTyped(typedWord, isBatchMode);
         }
+    }
+
+    /**
+     * RCBBoard Singlish (phase 2B stage 3): when Space, punctuation or another key ends a Singlish word,
+     * the combiner hands the converted word back as a {@link KeyCode#MULTIPLE_CODE_POINTS} event just
+     * before that key is handled, and applying it clears the auto-correction that the suggestions
+     * prepared for this word. Restore it, so that the key can commit it as for other languages.
+     * Only on the Singlish keyboard, only if the handed-back text is exactly the word the current
+     * suggestions are for, and only if those suggestions auto-correct to {@code pendingAutoCorrection}.
+     * Hangul, Khipro and other combiners are not affected.
+     */
+    private void restoreSinglishAutoCorrection(final Event event, final SuggestedWordInfo pendingAutoCorrection) {
+        if (pendingAutoCorrection == null
+                || !SinglishCombiner.COMBINING_SPEC.equals(mWordComposer.getCombiningSpec())
+                || !mSuggestedWords.mWillAutoCorrect
+                || mSuggestedWords.size() <= SuggestedWords.INDEX_OF_AUTO_CORRECTION
+                || mSuggestedWords.getInfo(SuggestedWords.INDEX_OF_AUTO_CORRECTION) != pendingAutoCorrection
+                || mSuggestedWords.mTypedWordInfo == null) return;
+        final String typedWord = mWordComposer.getTypedWord();
+        if (!TextUtils.equals(event.getTextToCommit(), typedWord)
+                || !typedWord.equals(mSuggestedWords.mTypedWordInfo.mWord)) return;
+        mWordComposer.setAutoCorrection(pendingAutoCorrection);
     }
 
     /**
