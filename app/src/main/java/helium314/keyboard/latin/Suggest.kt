@@ -21,6 +21,7 @@ import helium314.keyboard.latin.define.DecoderSpecificConstants.SHOULD_REMOVE_PR
 import helium314.keyboard.latin.dictionary.Dictionary
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.settings.SettingsValuesForSuggestion
+import helium314.keyboard.latin.singlish.SinglishCandidates
 import helium314.keyboard.latin.singlish.SinglishRepaya
 import helium314.keyboard.latin.suggestions.SuggestionStripView
 import helium314.keyboard.latin.utils.AutoCorrectionUtils
@@ -118,6 +119,9 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
             firstOccurrenceOfTypedWordInSuggestions,
             typedWordFirstOccurrenceWordInfo
         )
+        // RCBBoard Singlish: added after the auto-correction decision, so that it stays unchanged
+        if (typedWordString.isNotEmpty() && wordComposer.combiningSpec == SinglishCombiner.COMBINING_SPEC)
+            addSinglishSpellings(typedWordString, suggestionsContainer, if (hasAutoCorrection) 1 else 0)
         val typedWordInfo = SuggestedWordInfo(typedWordString, "", SuggestedWordInfo.MAX_SCORE,
             SuggestedWordInfo.KIND_TYPED, typedWordFirstOccurrenceWordInfo?.mSourceDict ?: Dictionary.DICTIONARY_USER_TYPED,
             SuggestedWordInfo.NOT_AN_INDEX , SuggestedWordInfo.NOT_A_CONFIDENCE)
@@ -161,6 +165,33 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
         val isTypedWordValid = firstOccurrenceOfTypedWordInSuggestions > -1 || (!resultsArePredictions && !allowsToBeAutoCorrected)
         return SuggestedWords(suggestionsList, suggestionResults.mRawSuggestions, typedWordInfo,
             isTypedWordValid, hasAutoCorrection || correctToCapitalizedWord, false, inputStyle, sequenceNumber)
+    }
+
+    /**
+     * RCBBoard Singlish (phase 2B): dictionary spellings of the transliterated [typedWord] that differ
+     * in ambiguous letters (ගෙඩර -> ගෙදර, see [SinglishCandidates]), cheapest first, at most
+     * [MAX_SINGLISH_SPELLINGS]. They are inserted into [suggestions] at [index] and replace any
+     * other entry of the same word. The typed word itself is not one of them; it stays the typed word.
+     * Only reads the dictionaries; nothing is stored or logged.
+     */
+    private fun addSinglishSpellings(typedWord: String, suggestions: ArrayList<SuggestedWordInfo>, index: Int) {
+        if (typedWord.codePointCount(0, typedWord.length) < MIN_SINGLISH_SPELLING_LENGTH) return
+        // entries before index (the auto-correction) stay where they are
+        val fixed = suggestions.take(index).mapTo(HashSet()) { it.mWord }
+        val spellings = SinglishCandidates.candidates(typedWord, mDictionaryFacilitator::isValidSuggestionWord)
+            .filter { it.cost > 0 && it.word != typedWord && it.word !in fixed }
+            .take(MAX_SINGLISH_SPELLINGS)
+        if (spellings.isEmpty()) return
+        val infos = spellings.map { spelling ->
+            // keep the dictionary's own entry if the normal lookup found the word too
+            suggestions.firstOrNull { it.mWord == spelling.word }
+                ?: SuggestedWordInfo(spelling.word, "", SuggestedWordInfo.MAX_SCORE - spelling.cost,
+                    SuggestedWordInfo.KIND_CORRECTION, Dictionary.DICTIONARY_USER_TYPED,
+                    SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE)
+        }
+        val words = spellings.mapTo(HashSet()) { it.word }
+        suggestions.removeAll { it.mWord in words }
+        suggestions.addAll(index.coerceAtMost(suggestions.size), infos)
     }
 
     // returns [allowsToBeAutoCorrected, hasAutoCorrection]
@@ -396,6 +427,10 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
 
         // Close to -2**31
         private const val SUPPRESS_SUGGEST_THRESHOLD = -2000000000
+
+        // RCBBoard Singlish: at most this many dictionary spellings, only for words of at least this many code points
+        private const val MAX_SINGLISH_SPELLINGS = 3
+        private const val MIN_SINGLISH_SPELLING_LENGTH = 2
 
         private const val MAXIMUM_AUTO_CORRECT_LENGTH_FOR_GERMAN = 12
         // TODO: should we add Finnish here?

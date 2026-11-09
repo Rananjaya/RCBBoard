@@ -1019,6 +1019,17 @@ class InputLogicTest {
         assertEquals(cps("කර්‍ම,"), cps(text))
     }
 
+    @Test fun `singlish looks up no spellings and shows no suggestions in a password field`() {
+        setInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        switchToSinglish()
+        ShadowFacilitator2.validWordLookups = 0
+        chainInput("gedara")
+        assertFalse(settingsValues.needsToLookupSuggestions())
+        inputLogic.performUpdateSuggestionStripSync(settingsValues, InputStyle.TYPING)
+        assertTrue(inputLogic.mSuggestedWords.isEmpty)
+        assertEquals(0, ShadowFacilitator2.validWordLookups)
+    }
+
     @Test fun `singlish never logs typed text`() {
         val secretLatin = "vasuraa"
         val secretSinhala = "වසුරා"
@@ -1380,7 +1391,13 @@ class ShadowFacilitator2 {
                          blockPotentiallyOffensive: Boolean) {
         lastAddedWord = suggestion
     }
+    @Implementation
+    fun isValidSuggestionWord(word: String): Boolean {
+        validWordLookups++
+        return false
+    }
     companion object {
         var lastAddedWord = ""
+        var validWordLookups = 0 // RCBBoard Singlish spellings (Suggest)
     }
 }
