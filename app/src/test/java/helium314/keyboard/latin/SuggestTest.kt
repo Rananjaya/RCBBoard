@@ -18,7 +18,11 @@ import helium314.keyboard.latin.common.ComposedData
 import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.InputPointers
 import helium314.keyboard.latin.common.StringUtils
+import helium314.keyboard.event.SinglishCombiner
 import helium314.keyboard.latin.dictionary.Dictionary
+import helium314.keyboard.latin.makedict.DictIO
+import helium314.keyboard.latin.singlish.SinglishCandidates
+import helium314.keyboard.latin.singlish.SinglishTransliterator
 import helium314.keyboard.latin.common.isEmoji
 import helium314.keyboard.latin.settings.Defaults
 import helium314.keyboard.latin.settings.Settings
@@ -66,6 +70,8 @@ class SuggestTest {
         tapTypingSuggestions = suggestionResults(emptyList())
         glideTypingSuggestions = suggestionResults(emptyList())
         nextWordSuggestions = suggestionResults(emptyList())
+        validWords = emptySet()
+        validWordLookups = 0
     }
 
     @Test fun `'on' to 'in' if 'in' was used before in this context`() {
@@ -677,8 +683,156 @@ class SuggestTest {
         assertTrue(LatinIME.emojiSettingChangedSinceMainDictionaryLoad(false, true)) // turned on: load it again
     }
 
-    private fun getSuggestedWords(gesture: Boolean, typedWord: String, capsMode: CapsMode): SuggestedWords {
+    // ---- RCBBoard Singlish phase 2B: dictionary spellings for ambiguous letters ----
+
+    private val si = Locale.forLanguageTag("si-LK")
+    private val zwj = "‍"
+
+    /** Types [latin] on the Sinhala (Singlish) keyboard and returns the suggestion strip words (typed word first). */
+    private fun singlish(latin: String): SuggestedWords {
+        currentTypingLocale = si
+        return getSuggestedWords(false, latin, CapsMode.OFF, SinglishCombiner.COMBINING_SPEC)
+    }
+
+    private fun useRealSinhalaDictionary() { validWords = realSinhalaWords }
+
+    @Test fun `singlish suggests the dictionary spelling of the six everyday words`() {
+        useRealSinhalaDictionary()
+        val expected = mapOf(
+            "gedara" to "ගෙදර",
+            "kohomada" to "කොහොමද",
+            "ayubowan" to "ආයුබෝවන්",
+            "sinhala" to "සිංහල",
+            "arthaya" to "අර්${zwj}ථය", // the word list has අර්ථය, shown with the repaya ZWJ (phase 2A)
+            "dhrushti" to "දෘෂ්ටි",
+        )
+        for ((latin, spelling) in expected) {
+            val strip = words(singlish(latin))
+            assertTrue(spelling in strip.take(4), "$latin: $strip") // typed word and at most 3 spellings
+        }
+    }
+
+    @Test fun `singlish keeps the transliterated word first and unchanged`() {
+        useRealSinhalaDictionary()
+        for (latin in listOf("gedara", "kohomada", "ayubowan", "sinhala", "arthaya", "dhrushti", "mama")) {
+            val result = singlish(latin)
+            val typed = SinglishTransliterator.transliterate(latin)
+            assertEquals(typed, result.mTypedWordInfo?.mWord, latin)
+            assertEquals(typed, words(result).first(), latin)
+            assertEquals(1, words(result).count { it == typed }, latin)
+        }
+    }
+
+    @Test fun `singlish spellings are ordered by cost and limited to three`() {
+        useRealSinhalaDictionary()
+        for (latin in listOf("gedara", "ayubowan", "sinhala", "arthaya", "dhrushti")) {
+            val typed = SinglishTransliterator.transliterate(latin)
+            val expected = SinglishCandidates.candidates(typed, realSinhalaWords::contains)
+                .filter { it.cost > 0 }.take(3).map { it.word }
+            assertEquals(expected, words(singlish(latin)).drop(1).take(expected.size), latin)
+        }
+        // everything valid: still only 3 spellings, the cheapest ones
+        val variants = SinglishCandidates.variants(SinglishTransliterator.transliterate("gedara"))
+        validWords = variants.map { it.word }.toSet()
+        val strip = words(singlish("gedara"))
+        assertEquals(listOf("ගෙඩර") + variants.filter { it.cost == 1 }.take(3).map { it.word }, strip)
+    }
+
+    @Test fun `singlish keeps an already valid typed word and offers the other spelling`() {
+        useRealSinhalaDictionary()
+        val result = singlish("kohomada")
+        assertEquals(listOf("කොහොමඩ", "කොහොමද"), words(result).take(2))
+    }
+
+    @Test fun `singlish shows no spelling the dictionary does not have`() {
+        validWords = emptySet()
+        assertEquals(listOf("ගෙඩර"), words(singlish("gedara")))
+        validWords = setOf("ගෙදර")
+        assertEquals(listOf("ගෙඩර", "ගෙදර"), words(singlish("gedara")))
+        // nothing ambiguous and nothing valid
+        assertEquals(listOf("ක්"), words(singlish("k")))
+    }
+
+    @Test fun `singlish spellings are not duplicated and keep the dictionary's own entry`() {
+        useRealSinhalaDictionary()
+        val native = suggestion("ගෙදර", 300, si)
+        tapTypingSuggestions = suggestionResults(listOf(native, suggestion("ගෙදරට", 200, si), suggestion("ගෙදරදී", 100, si)))
+        val result = singlish("gedara")
+        val strip = words(result)
+        assertEquals(strip.distinct(), strip)
+        assertEquals(1, strip.count { it == "ගෙදර" })
+        assertEquals("ගෙදර", strip[1])
+        assertTrue(result.getInfo(1) === native, "the dictionary's suggestion is reused, not a copy")
+        assertTrue(strip.containsAll(listOf("ගෙදරට", "ගෙදරදී")), "$strip") // normal Sinhala suggestions stay
+    }
+
+    @Test fun `singlish spellings with emoji suggestions on and off`() {
+        useRealSinhalaDictionary()
+        for (enabled in listOf(true, false)) {
+            setSuggestEmojis(enabled)
+            tapTypingSuggestions = suggestionResults(listOf(suggestion("ගෙදරට", 300, si), suggestion("🏠", 200, si)))
+            val strip = words(singlish("gedara"))
+            assertEquals("ගෙදර", strip[1], "emoji on: $enabled")
+            assertEquals(enabled, "🏠" in strip, "emoji on: $enabled, $strip")
+        }
+    }
+
+    @Test fun `singlish spellings do not change the auto-correction decision`() {
+        tapTypingSuggestions = suggestionResults(listOf(suggestion("ගෙදරට", 1500000, si), suggestion("ගෙඩරම", 900000, si)))
+        validWords = emptySet()
+        val before = singlish("gedara")
+        useRealSinhalaDictionary()
+        val after = singlish("gedara")
+        assertEquals(before.mWillAutoCorrect, after.mWillAutoCorrect)
+        assertEquals(before.mTypedWordValid, after.mTypedWordValid)
+        if (before.mWillAutoCorrect) assertEquals(before.getWord(SuggestedWords.INDEX_OF_AUTO_CORRECTION), after.getWord(SuggestedWords.INDEX_OF_AUTO_CORRECTION))
+        assertTrue("ගෙදර" in words(after))
+    }
+
+    @Test fun `a spelling that is also the auto-correction stays the auto-correction`() {
+        val autoCorrection = suggestion("ගෙදර", 1500000, si)
+        tapTypingSuggestions = suggestionResults(listOf(autoCorrection, suggestion("ගෙදරට", 200, si)))
+        validWords = emptySet()
+        val before = singlish("gedara")
+        useRealSinhalaDictionary()
+        val after = singlish("gedara")
+        assertEquals(before.mWillAutoCorrect, after.mWillAutoCorrect)
+        if (after.mWillAutoCorrect) assertTrue(after.getInfo(SuggestedWords.INDEX_OF_AUTO_CORRECTION) === autoCorrection)
+        assertEquals(1, words(after).count { it == "ගෙදර" })
+    }
+
+    @Test fun `English, Sinhala and Wijesekara suggestions are unchanged and do not look up spellings`() {
+        useRealSinhalaDictionary()
+        currentTypingLocale = Locale.ENGLISH
+        tapTypingSuggestions = suggestionResults(listOf(suggestion("colour", 300), suggestion("color", 200)))
+        assertEquals(listOf("colo", "colour", "color"), words(getSuggestedWords(false, "colo", CapsMode.OFF))) // English (US/UK): no combiner
+        // the Sinhala and Wijesekara keyboards type Sinhala letters directly, without the Singlish combiner
+        currentTypingLocale = si
+        tapTypingSuggestions = suggestionResults(listOf(suggestion("ගෙඩරට", 300, si)))
+        assertEquals(listOf("ගෙඩර", "ගෙඩරට"), words(getSuggestedWords(false, "ගෙඩර", CapsMode.OFF)))
+        assertEquals(0, validWordLookups)
+    }
+
+    @Test fun `singlish spellings are the same in incognito mode and only read the dictionary`() {
+        useRealSinhalaDictionary()
+        val normal = words(singlish("gedara"))
+        latinIME.prefs().edit { putBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, true) }
+        assertTrue(Settings.getValues().mIncognitoModeEnabled)
+        assertEquals(normal, words(singlish("gedara")))
+        assertTrue(validWordLookups > 0)
+    }
+
+    @Test fun `singlish spellings are not logged`() {
+        useRealSinhalaDictionary()
+        ShadowLog.reset()
+        val strip = words(singlish("gedara")) + words(singlish("arthaya"))
+        val logged = ShadowLog.getLogs().joinToString("\n") { it.msg ?: "" }
+        for (text in strip + listOf("gedara", "arthaya")) assertFalse(text in logged, "logged: $text")
+    }
+
+    private fun getSuggestedWords(gesture: Boolean, typedWord: String, capsMode: CapsMode, combiningSpec: String? = null): SuggestedWords {
         val wc = WordComposer()
+        if (combiningSpec != null) wc.restartCombining(combiningSpec)
         if (gesture) wc.setBatchInputPointers(InputPointers(1))
         if (typedWord.isNotEmpty()) {
             StringUtils.toCodePointArray(typedWord).forEach {
@@ -756,6 +910,9 @@ private var currentTypingLocale = Locale.ENGLISH
 private var tapTypingSuggestions = suggestionResults(emptyList())
 private var glideTypingSuggestions = suggestionResults(emptyList())
 private var nextWordSuggestions = suggestionResults(emptyList())
+// RCBBoard Singlish: words the facilitator reports as valid, and how often it was asked
+private var validWords: Set<String> = emptySet()
+private var validWordLookups = 0
 
 fun suggestion(word: String, score: Int, locale: Locale = currentTypingLocale, shortcut: Boolean = false) =
     SuggestedWordInfo(
@@ -785,6 +942,11 @@ class ShadowFacilitator {
     @Implementation
     fun hasAtLeastOneInitializedMainDictionary() = true // otherwise no autocorrect
     @Implementation
+    fun isValidSuggestionWord(word: String): Boolean {
+        validWordLookups++
+        return word in validWords
+    }
+    @Implementation
     // what is relevant for facilitator?
     // only detecting whether we want next word suggestions (typed word empty and not batch mode)
     fun getSuggestionResults(composedData: ComposedData, ngramContext: NgramContext, keyboard: Keyboard,
@@ -810,4 +972,11 @@ private class TestDict(locale: Locale) : Dictionary(TYPE_MAIN, locale) {
     }
 
     override fun isInDictionary(word: String?): Boolean = false
+}
+
+// the bundled Sinhala word list (third_party/sinhala-dictionary), read once
+private val realSinhalaWords: Set<String> by lazy {
+    val file = listOf(java.io.File("third_party/sinhala-dictionary/main_si.combined"),
+        java.io.File("../third_party/sinhala-dictionary/main_si.combined")).first { it.isFile }
+    DictIO.readCombinedDictionary(file.path).map { it.mWord }.toHashSet()
 }
