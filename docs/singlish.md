@@ -142,12 +142,12 @@ Rakaransaya, yansaya and repaya are written in Unicode with hal kirīma (්, U+
 
 ## Mapping convention and references
 
-The table follows the phonetic convention that most Sinhala users know from the Helakuru keyboard. Two open-source keyboards that implement the same convention were used as references while writing this table:
+The table is RCBBoard's own phonetic mapping. Each Sinhala letter is typed with the Latin letters that sound closest to it: doubled vowels give the long vowels, an added `h` gives the aspirated consonants, and capital letters give the retroflex and other less common letters. Two open-source Singlish keyboards were used as references while writing this table:
 
 * Sithakuru, GPL-3.0-only: <https://codeberg.org/sinhala/sithakuru>
 * Remeinium Singlish, Apache-2.0: <https://github.com/remeinium/singlish>
 
-No code or table was copied from them, and nothing comes from the proprietary Helakuru app. The RCBBoard table and engine (`latin/singlish/SinglishTransliterator.kt`) were written for RCBBoard and are GPL-3.0-only like the rest of RCBBoard. Where the references differ, RCBBoard chose:
+No code or table was copied from them. The RCBBoard table and engine (`latin/singlish/SinglishTransliterator.kt`) were written for RCBBoard and are GPL-3.0-only like the rest of RCBBoard. Where the references differ, RCBBoard chose:
 
 * `th`/`dh` dental (ත ද) with `thh`/`dhh` for the aspirated forms (ථ ධ);
 * `T`/`D` for the aspirated retroflex letters (ඨ ඪ), and no separate `Th`/`Dh`;
