@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard
 
+import android.content.ContextWrapper
 import android.view.inputmethod.InputMethodSubtype
 import androidx.core.content.edit
 import helium314.keyboard.latin.LatinIME
@@ -20,6 +21,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -73,9 +75,21 @@ class LanguageAllowListTest {
         assertEquals(1, SubtypeSettings.getResourceSubtypesForLocale(enUs).distinct().size)
     }
 
+    // The LatinIME above starts loading its main dictionaries in the background, which extracts
+    // bundled dictionaries (e.g. emoji_en.dict) into filesDir/dicts at an unpredictable moment, and
+    // extracted ones are no longer listed as bundled. So look up the bundled dictionaries with an
+    // empty filesDir of their own, which the background loading never writes to.
+    private fun bundledDictsForLocale(locale: Locale): List<String> {
+        val emptyFilesDir = File(latinIME.cacheDir, "no-extracted-dicts-${locale.toLanguageTag()}")
+        emptyFilesDir.deleteRecursively()
+        emptyFilesDir.mkdirs()
+        val isolated = object : ContextWrapper(latinIME) { override fun getFilesDir() = emptyFilesDir }
+        return DictionaryFactory.getAvailableDictsForLocale(locale, isolated, true).second
+    }
+
     @Test fun `each English variant uses its own main dictionary`() {
-        val (_, us) = DictionaryFactory.getAvailableDictsForLocale(enUs, latinIME, true)
-        val (_, gb) = DictionaryFactory.getAvailableDictsForLocale(enGb, latinIME, true)
+        val us = bundledDictsForLocale(enUs)
+        val gb = bundledDictsForLocale(enGb)
         assertEquals("main_en-US.dict", us.single { it.startsWith("main_") })
         assertEquals("main_en-GB.dict", gb.single { it.startsWith("main_") })
         // both share the English emoji dictionary
