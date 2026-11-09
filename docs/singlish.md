@@ -6,7 +6,7 @@ Everything runs on the phone. Nothing is sent anywhere, and the Latin letters yo
 
 ## Status
 
-The keyboard follows the rules below exactly and gives one result (phase 1, with the conjunct rules of phase 2A). Some everyday spellings map to a different letter than the one you mean:
+While you type, the keyboard follows the rules below exactly and gives one result (phase 1, with the conjunct rules of phase 2A). Some everyday spellings map to a different letter than the one you mean:
 
 | Intended word | Everyday spelling gives | Type instead |
 | --- | --- | --- |
@@ -15,7 +15,7 @@ The keyboard follows the rules below exactly and gives one result (phase 1, with
 | ආයුබෝවන් | `ayubowan` → අයුබොවන් | `aayuboowan` |
 | සිංහල | `sinhala` → සින්හල | `sixhala` |
 
-Phase 2 is planned to offer the intended word as a suggestion for such spellings.
+The keyboard suggests the dictionary spelling for such words, and Space corrects to it when there is one clear spelling (phase 2B); see [Spelling suggestions and correction](#spelling-suggestions-and-correction).
 
 ## How it works
 
@@ -136,9 +136,34 @@ Rakaransaya, yansaya and repaya are written in Unicode with hal kirīma (්, U+
 ## Typing behaviour
 
 * **Backspace** while composing removes the last Latin letter and converts the word again. With nothing composed it deletes text as usual.
-* **Space** commits the Sinhala word. **Punctuation, digits and other keys** commit the word first and are then typed normally.
+* **Space** commits the Sinhala word, corrected if there is one clear dictionary spelling (see below). **Punctuation** and a new line do the same before the character. **Digits and other keys** commit the word as typed and are then typed normally.
 * **Shift** types the capital letters used in the table (Sinhala has no capitals, so the Singlish keyboard upcases its keys like English).
 * **Suggestions** come from the bundled Sinhala dictionary for the composing Sinhala word. Picking one commits it; typing the next word adds the space.
+
+## Spelling suggestions and correction
+
+Several Latin letters stand for more than one Sinhala letter in everyday typing (`d` for ඩ or ද, `a` for අ or ආ, `sh` for ශ or ෂ, `n` + `h` for න්හ or ංහ, short or long vowels). For the composing word the keyboard therefore also looks for spellings that differ only in such letters, keeps the ones the dictionaries know, and shows up to three of them, fewest changes first. The typed word stays first and unchanged.
+
+When you press **Space**, punctuation or a new line, the word is **corrected automatically** to such a spelling only if all of this holds:
+
+* auto-correction is on (*Settings → Text correction → Auto-correction*) and the text field allows it;
+* the typed word is not a word the dictionaries know (main, personal or learned words): `kohomada` stays කොහොමඩ, and කොහොමද is only suggested;
+* exactly one spelling has the fewest changes, and at most two changes: if two spellings are equally close, nothing is guessed;
+* the word has at least three Sinhala characters and no digits.
+
+The correction is shown in bold in the suggestion strip while you type, and the typed word is shown there too, so tapping it keeps what you typed. Picking any suggestion always wins.
+
+| You type | Result |
+| --- | --- |
+| `gedara` + Space | ගෙදර |
+| `sinhala` + Space | සිංහල |
+| `ayubowan` + Space | ආයුබෝවන් |
+| `arthaya` + Space | අර්‍ථය (with the repaya ZWJ) |
+| `kohomada` or `mama` + Space | කොහොමඩ or මම (valid words, kept) |
+
+**Undo:** pressing Backspace right after a correction puts back the word as it was typed (ගෙදර becomes ගෙඩර again). This is HeliBoard's *Backspace reverts autocorrect* setting, on by default. The restored word is Sinhala; the Latin letters are not restored.
+
+**Turning it off:** switch off *Settings → Text correction → Auto-correction*. The spellings are still suggested. Corrected words are learned like any other word you commit, except in incognito mode. Everything runs on the phone; nothing typed is stored or sent anywhere by this feature.
 
 ## Mapping convention and references
 
