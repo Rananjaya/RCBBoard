@@ -1,15 +1,17 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Stage 3 - Production: started by hand only (never by a merge), with the exact commit SHA
-# that passed QA. The commit must be on develop, must have a successful QA run, and must not
-# be older than the latest release. Builds, signs and publishes exactly that commit as a
-# universal APK, after approval in the 'release' environment. Only runs in Rananjaya/RCBBoard
-# on develop. Never pushes commits, never force-pushes, never touches main or the HeliBoard
-# upstream repository. See docs/ci-cd.md.
+# that passed QA. The commit must be on develop, its newest QA run (a manual run of qa.yml on
+# develop) must have succeeded and really built that commit, and it must not be older than the
+# latest release. Builds, signs and publishes exactly that commit as a universal APK, after
+# approval in the 'release' environment. Only runs in Rananjaya/RCBBoard on develop. Never
+# pushes commits, never force-pushes, never touches main or the HeliBoard upstream repository.
+# See docs/ci-cd.md.
 #
-# dry_run: the same gates, approval, build, production signing and verification, but no tag,
-# no GitHub Release (not even a draft) and no APK upload; only SHA256SUMS.txt and the release
-# notes are kept as a workflow artifact. Also builds when there are no app changes (as the
-# next patch version), so the whole pipeline can be tested without publishing anything.
+# dry_run is ticked by default: a run only publishes when dry_run is explicitly unticked.
+# A dry run has the same gates, approval, build, production signing and verification, but no
+# tag, no GitHub Release (not even a draft) and no APK upload; only SHA256SUMS.txt and the
+# release notes are kept as a workflow artifact. Also builds when there are no app changes (as
+# the next patch version), so the whole pipeline can be tested without publishing anything.
 name: Release
 run-name: ${{ inputs.dry_run && 'Release dry run' || 'Release' }} ${{ inputs.commit }}
 
@@ -25,10 +27,12 @@ on:
         type: choice
         options: [auto, patch, minor, major]
         default: auto
+      # Ticked by default, so starting the workflow never publishes by accident. Untick it
+      # only to publish a real release.
       dry_run:
-        description: "Dry run: build, sign and verify, but do not tag or publish anything"
+        description: "Dry run: build, sign and verify, but do not tag or publish anything. Untick ONLY to publish a production release."
         type: boolean
-        default: false
+        default: true
 
 permissions: {}
 
@@ -116,6 +120,10 @@ jobs:
           if [ "$DRY_RUN" = "true" ]; then
             echo "Dry run: build, sign and verify $TAG without tagging or publishing."
             echo "release=true" >> "$GITHUB_OUTPUT"
+          elif [ "$DRY_RUN" != "false" ]; then
+            # publishing needs an explicit dry_run=false; anything else is refused
+            echo "::error title=Release::dry_run is '$DRY_RUN', not true or false. Nothing is published."
+            exit 1
           elif [ "$RELEASE" != "true" ]; then
             echo "No app changes since the last release (only docs, CI or tests): nothing to publish."
             echo "release=false" >> "$GITHUB_OUTPUT"
@@ -302,6 +310,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          # second guard next to the step condition: only an explicit dry_run=false creates a tag
+          [ "$DRY_RUN" = "false" ] || { echo "::error title=Dry run::dry_run is '$DRY_RUN': no tag is created."; exit 1; }
           if existing=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" 2>/dev/null); then
             type=$(jq -r .object.type <<< "$existing"); sha=$(jq -r .object.sha <<< "$existing")
             [ "$type" = tag ] && sha=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$sha" --jq .object.sha)
@@ -324,6 +334,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          # second guard next to the step condition: only an explicit dry_run=false publishes
+          [ "$DRY_RUN" = "false" ] || { echo "::error title=Dry run::dry_run is '$DRY_RUN': nothing is published."; exit 1; }
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             echo "::error title=Duplicate release::A GitHub Release for $TAG already exists."
             exit 1

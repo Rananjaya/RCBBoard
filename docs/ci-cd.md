@@ -19,7 +19,7 @@ develop @ abc123 ──► Development (automatic) ──► QA (you start it) �
 
 Development and QA build the same existing `debug` build type, so the QA APK is the same app as the Development APK and replaces it. The debug app and the production app have different application IDs, so both can be installed on the same phone.
 
-`build-debug-apk.yml` (inherited from HeliBoard) still exists for building a debug APK by hand.
+There are no other workflows. HeliBoard's `build-debug-apk.yml` was removed: it was never used in RCBBoard, built with a throwaway debug key (so its APK could not update the debug app), and the CI job **Debug build** already attaches a debug APK to every pull request. `.github/scripts/test_workflows.py` checks that only these four workflows exist.
 
 No workflow merges, commits, force-pushes, touches `main` or pushes anything to the HeliBoard upstream repository. Development, QA and Production only run in `Rananjaya/RCBBoard` on `develop`. Development and QA sign with a separate, persistent [debug signing key](#debug-signing-key); only Production uses the production signing key.
 
@@ -61,7 +61,7 @@ The QA workflow then:
 3. Builds the Debug APK (`:app:assembleDebug`) with version `X.Y.Z-qa.<run>+<commit>`, where `X.Y.Z` is the version a production release of this commit would get.
 4. Signs it with the same [RCBBoard debug key](#debug-signing-key), verifies it and uploads `RCBBoard-qa-X.Y.Z-qa.<run>-<full commit SHA>.apk` (kept 14 days).
 
-The run is named **"QA &lt;commit&gt;"**. Production uses this name to find it, so it cannot be renamed.
+The run is named **"QA &lt;commit&gt;"**. Production uses this name to find it, so it cannot be renamed. Production also relies on the job names **Verify commit** and **QA APK** and the step **Confirm the checked-out commit**; `test_workflows.py` fails if any of them is renamed.
 
 **Installing and testing the QA APK:** download it from the run summary on your phone and open it. It is the **RCBBoard debug** app, the same app as the Development APK, and it installs next to the production RCBBoard app. Enable it in *Settings → System → Keyboard → On-screen keyboard*, switch to it and test.
 
@@ -73,11 +73,15 @@ Started by hand after QA, never by a merge:
 
 1. Copy the full commit SHA from the summary of the QA run you tested.
 2. **Actions → Release → Run workflow**, branch `develop`, paste the SHA. Leave `bump` on `auto`.
-3. The run waits for your approval (see [Production approval](#production-approval)). Approve it to build and publish.
+3. **`dry_run` is ticked by default.** Leave it ticked to test the pipeline (nothing is published, see [Production dry run](#production-dry-run)). **Untick it only to publish** a production release. The run name shows which one it is: *"Release dry run &lt;commit&gt;"* or *"Release &lt;commit&gt;"*, and so does the job: *"Dry run: build and sign …"* or *"Build, sign and publish rcbboard-vX.Y.Z"*.
+4. The run waits for your approval (see [Production approval](#production-approval)). Check the job name before you approve.
 
 The release workflow:
 
-1. **Checks the commit:** full SHA, on `develop`, **a successful QA run for exactly this SHA**, and **not older than the latest release** (releasing older code is refused).
+1. **Checks the commit:** full SHA, on `develop`, **a successful QA run for exactly this SHA**, and **not older than the latest release** (releasing older code is refused). The QA run must be genuine and current:
+   - a manual run of `.github/workflows/qa.yml` on `develop` in `Rananjaya/RCBBoard` (a copy of the workflow on another branch or in a fork never counts);
+   - the **newest** QA run for this SHA: if a later QA run of the same SHA failed, was cancelled or is still running, the release stops; an older success does not override it;
+   - its jobs **Verify commit** and **QA APK** succeeded (not skipped), and **QA APK** confirmed that it checked out exactly this SHA.
 2. **Determines the version** of exactly that commit (see [Versioning](#versioning)). If only documentation, CI or tests changed since the last release, nothing is published. If the newest tag has no published release, it stops with recovery steps (see [Recovering a failed release](#recovering-a-failed-release)).
 3. **Waits for approval** in the `release` environment.
 4. **Builds** the universal release APK from exactly that commit (`:app:assembleRelease`, all four ABIs, no Gradle cache).
@@ -92,10 +96,11 @@ Safety:
 - The GitHub CLI uploads to a draft and only publishes it when all uploads succeeded.
 - Tags and releases created with the workflow token do not start other workflows.
 - If a production secret is missing, the run stops before building. An unsigned build is never published.
+- `dry_run` is ticked by default. Only an explicit `dry_run = false` publishes: the publish decision, the tag step and the release step each check it again.
 
 ### Production dry run
 
-To test the whole production pipeline without publishing anything, start the release with **`dry_run`** ticked (same commit SHA, branch `develop`). The run is named *"Release dry run &lt;commit&gt;"*.
+To test the whole production pipeline without publishing anything, start the release with **`dry_run`** ticked, which is the default (same commit SHA, branch `develop`). The run is named *"Release dry run &lt;commit&gt;"*.
 
 | | Real release | Dry run |
 | --- | --- | --- |
@@ -195,7 +200,42 @@ These settings are made by the repository owner on github.com; the workflows do 
 2. **Actions permissions** (Settings → Actions → General): allow GitHub-made actions plus `gradle/actions` and `android-actions/setup-android`; require approval for workflows from external contributors' forks; *Workflow permissions*: **Read repository contents and packages permissions**, and leave *Allow GitHub Actions to create and approve pull requests* unchecked.
 3. **Environment `release`** with the production secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` (the existing release keystore; never replace it), deployment branch `develop`, and **yourself as required reviewer** (see [Production approval](#production-approval)).
 4. **Debug signing key** as repository secrets and variable (see [Debug signing key](#debug-signing-key)). Configure it before merging the pipeline, otherwise the first Development run stops.
-5. **Branch protection** for `develop` (Settings → Branches), requiring the checks `Release script tests`, `Unit tests`, `Native tests (ASan/UBSan)` and `Debug build`.
+5. **Branch rulesets** for `develop` and `main`, see [Branch rulesets](#branch-rulesets).
+
+## Branch rulesets
+
+Settings → Rules → Rulesets. `develop` and `main` need **different** rules, so they have one ruleset each.
+
+### `develop`: pull request + all CI checks, no bypass
+
+| Setting | Value |
+| --- | --- |
+| Name | `Protect develop` |
+| Enforcement status | Active |
+| Bypass list | **empty** (a bypass actor can also skip the required checks) |
+| Target branches | `develop` only |
+| Restrict deletions | on |
+| Block force pushes | on |
+| Restrict updates | **off** (with an empty bypass list it would block every merge) |
+| Require a pull request before merging | on, **Required approvals: 0** (single maintainer: GitHub does not let you approve your own pull request) |
+| Require status checks to pass | on, **Require branches to be up to date before merging** on |
+| Status checks (source **GitHub Actions**) | `Release script tests`, `Unit tests`, `Native tests (ASan/UBSan)`, `Debug build` |
+
+These are the job names in `ci.yml`, which runs for every pull request to `develop` (no path filters, so the checks are never missing). A failed, cancelled or missing check blocks the merge. Choosing **GitHub Actions** as the source means only this repository's workflows can report them. `test_workflows.py` fails if a job is renamed, because the ruleset would then wait for a check that never reports.
+
+Check afterwards: `https://api.github.com/repos/Rananjaya/RCBBoard/rules/branches/develop` must list `required_status_checks` with the four checks, and no `update` rule.
+
+### `main`: an exact copy of HeliBoard
+
+`main` only follows HeliBoard (`upstream/main`) and is never built or released. It is updated by fast-forwarding it to HeliBoard's `main` (**Sync fork**), which keeps it identical to upstream. RCBBoard's workflows do not exist on `main`, so CI checks could never report there, and a pull request merge always adds a merge commit (or rewrites the commits), so `main` would no longer equal upstream. Therefore `main` gets no pull request and no status check rule:
+
+| Setting | Value |
+| --- | --- |
+| Name | `Protect main` |
+| Bypass list | yourself (Repository admin), mode **Always**, only for Sync fork |
+| Target branches | `main` only |
+| Restrict deletions, Block force pushes | on |
+| Restrict updates | on (only you, as bypass actor, can fast-forward it) |
 
 ## Download and install a production release
 
@@ -231,7 +271,12 @@ It is set once, as `applicationId` in `app/build.gradle.kts` (the debug build ty
 | QA: "… is not a full 40-character lower-case commit SHA" | Paste the full SHA from the Development run summary, without spaces. |
 | QA: "… is not on develop" | Only commits on `develop` can be tested; merge the pull request first. |
 | QA: "there is no successful Development run for …" | Wait for (or re-run) the Development run of that commit. |
-| Release: "there is no successful QA run for …" | Run QA with exactly this SHA, test the APK, then start the release again. |
+| Release: "there is no successful QA run for …" | Run QA with exactly this SHA, test the APK, then start the release again. If the message says the newest QA run ended with `failure` or `cancelled`, an older successful QA run does not count: run QA again. |
+| Release: "the newest QA run for … has not finished yet" | Wait for that QA run to succeed, then start the release again. |
+| Release: "… did not build and verify the commit" / "did not confirm" | That QA run's jobs were skipped or did not check out the commit. Run QA again with this SHA. |
+| Release: "dry_run is '…', not true or false" | Start the release from the Actions page (the `dry_run` box) instead of with a hand-made API call. |
+| Release finished but nothing was published | `dry_run` was ticked (the default). Start it again with `dry_run` unticked to publish. |
+| Pull request: "Required status check … is expected" | The check never reported. Make sure `ci.yml` ran for the pull request; check names must match the ruleset exactly. |
 | Release: "… is older than the latest release" / "does not contain the latest release" | Only commits after the latest release can be released. |
 | Release waits with "Review deployments" | That is the approval step: approve it after testing the QA APK. |
 | Development/QA: "Debug signing not configured" | Add the missing debug signing secrets or the `DEBUG_CERT_SHA256` variable (see [Debug signing key](#debug-signing-key)), then re-run. |
