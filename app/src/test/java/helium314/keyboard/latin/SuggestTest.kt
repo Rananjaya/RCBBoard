@@ -16,6 +16,7 @@ import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo.KIND_SHORTCUT
 import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo.KIND_WHITELIST
 import helium314.keyboard.latin.common.ComposedData
 import helium314.keyboard.latin.common.Constants
+import helium314.keyboard.latin.common.CoordinateUtils
 import helium314.keyboard.latin.common.InputPointers
 import helium314.keyboard.latin.common.StringUtils
 import helium314.keyboard.event.SinglishCombiner
@@ -945,6 +946,29 @@ class SuggestTest {
         assertEquals(0, validWordLookups)
     }
 
+    // ---- RCBBoard: baseline for the upstream Kotlin migration (stage 0): resumed words ----
+
+    @Test fun `resumed singlish word gets the dictionary spellings but is not auto-corrected`() {
+        enableAutoCorrection()
+        useRealSinhalaDictionary()
+        currentTypingLocale = si
+        val result = getSuggestedWords(false, "ගෙඩර", CapsMode.OFF, SinglishCombiner.COMBINING_SPEC, throughCopy = true, resumed = true)
+        assertEquals("ගෙඩර", result.mTypedWordInfo?.mWord)
+        assertEquals("ගෙදර", words(result)[1]) // stage 2 spellings also for a resumed word
+        assertFalse(result.mWillAutoCorrect) // stage 3: resumed words are never auto-corrected
+    }
+
+    @Test fun `resumed native sinhala word gets no singlish spellings`() {
+        enableAutoCorrection()
+        useRealSinhalaDictionary()
+        currentTypingLocale = si
+        tapTypingSuggestions = suggestionResults(listOf(suggestion("ගෙඩරට", 300, si)))
+        val result = getSuggestedWords(false, "ගෙඩර", CapsMode.OFF, throughCopy = true, resumed = true)
+        assertEquals(listOf("ගෙඩර", "ගෙඩරට"), words(result))
+        assertFalse(result.mWillAutoCorrect)
+        assertEquals(0, validWordLookups)
+    }
+
     // ---- RCBBoard: Suggest gets a copy of the WordComposer (InputLogic.getSuggestedWords) ----
 
     @Test fun `singlish suggestions work through the copied word composer, as InputLogic calls Suggest`() {
@@ -968,11 +992,14 @@ class SuggestTest {
     }
 
     private fun getSuggestedWords(gesture: Boolean, typedWord: String, capsMode: CapsMode,
-                                  combiningSpec: String? = null, throughCopy: Boolean = false): SuggestedWords {
+                                  combiningSpec: String? = null, throughCopy: Boolean = false, resumed: Boolean = false): SuggestedWords {
         val wc = WordComposer()
         if (combiningSpec != null) wc.restartCombining(combiningSpec)
         if (gesture) wc.setBatchInputPointers(InputPointers(1))
-        if (typedWord.isNotEmpty()) {
+        if (resumed) { // as InputLogic does when the cursor moves into a word: the word is already text
+            val codePoints = StringUtils.toCodePointArray(typedWord)
+            wc.setComposingWord(codePoints, CoordinateUtils.newCoordinateArray(codePoints.size, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE))
+        } else if (typedWord.isNotEmpty()) {
             StringUtils.toCodePointArray(typedWord).forEach {
                 val e = Event.createEventForCodePointFromAlreadyTypedText(it, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE)
                 wc.applyProcessedEvent(wc.processEvent(e))

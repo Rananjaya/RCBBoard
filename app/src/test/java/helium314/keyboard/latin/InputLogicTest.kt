@@ -15,6 +15,7 @@ import helium314.keyboard.ShadowInputMethodService.Companion.selectionEnd
 import helium314.keyboard.ShadowInputMethodService.Companion.selectionStart
 import helium314.keyboard.ShadowLocaleManagerCompat
 import helium314.keyboard.event.Event
+import helium314.keyboard.event.SinglishCombiner
 import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.keyboard.MainKeyboardView
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
@@ -1217,6 +1218,104 @@ class InputLogicTest {
         pressKeys("ග", "ෙ", "ඩ", "ර")
         getAutocorrectedWithSpaceAfter("ගෙදර", "ගෙඩර")
         assertEquals("ගෙදර ", text) // the native path, without a combiner, as before
+    }
+
+    // ---- RCBBoard: baseline for the upstream Kotlin migration (stage 0) ----
+    // Records the current behaviour when the cursor moves into a word (resumed suggestions) and of Khipro,
+    // because the upstream refactoring changes the word-at-cursor code (TextRange -> TextAtCursor) and
+    // shared suggestion classes. Entries marked "known limitation" are not the intended behaviour.
+
+    private fun resumeAt(position: Int) {
+        setCursorPosition(position)
+        inputLogic.restartSuggestionsOnWordTouchedByCursor(settingsValues)
+        handleMessages()
+    }
+
+    private fun switchToNativeSinhala() {
+        setText("")
+        latinIME.switchToSubtype(SubtypeSettings.getResourceSubtypesForLocale("si-LK".constructLocale())
+            .first { it.mainLayoutName() == "sinhala" })
+        currentScript = ScriptUtils.SCRIPT_SINHALA
+    }
+
+    @Test fun `singlish word is resumed when the cursor moves into it`() {
+        switchToSinglish()
+        chainInput("gedhara mama ")
+        assertEquals("ගෙදර මම ", text)
+        resumeAt(2) // inside ගෙදර
+        assertEquals("ගෙදර", composer.typedWord)
+        assertEquals("ගෙදර", composingText.toString())
+        assertTrue(composer.isResumed)
+        assertEquals(SinglishCombiner.COMBINING_SPEC, composer.combiningSpec) // still the Singlish combiner
+        assertEquals(2, cursor)
+        assertEquals("ගෙදර මම ", text) // nothing changed in the text
+    }
+
+    @Test fun `known limitation - singlish letter typed into a resumed word goes to the end of the word`() {
+        switchToSinglish()
+        chainInput("gedhara mama ")
+        resumeAt(2)
+        // not via input(): the cursor moves to the end of the word, which input() treats as an error
+        latinIME.onEvent(Event.createEventForCodePointFromUnknownSource('a'.code))
+        handleMessages()
+        assertEquals("ගෙදරඅ මම ", text)
+        assertEquals("ගෙදරඅ", composer.typedWord)
+        assertEquals(5, cursor)
+    }
+
+    @Test fun `known limitation - resuming a rakaransaya word stops at the ZWJ`() {
+        val zwj = "\u200D"
+        switchToSinglish()
+        chainInput("kramaya ")
+        assertEquals("ක්${zwj}රමය ", text)
+        resumeAt(3) // after the ZWJ: only the part after it is resumed
+        assertEquals("රමය", composer.typedWord)
+        resumeAt(1) // before the ZWJ: only the part before it
+        assertEquals("ක්", composer.typedWord)
+        assertEquals("ක්${zwj}රමය ", text) // the text itself is unchanged
+    }
+
+    @Test fun `native sinhala word is resumed only with the cursor inside it`() {
+        switchToNativeSinhala()
+        pressKeys("අ", "ප", "ි")
+        input(' ')
+        assertEquals("අපි ", text)
+        resumeAt(3) // right after the word (as for other languages): not resumed
+        assertFalse(composer.isComposingWord)
+        resumeAt(1)
+        assertEquals("අපි", composer.typedWord) // the whole word, including the vowel sign
+        assertTrue(composer.isResumed)
+        assertEquals("", composer.combiningSpec) // no combiner on the Sinhala keyboard
+    }
+
+    private fun khiproSubtype() = SubtypeSettings.getResourceSubtypesForLocale("bn-BD".constructLocale())
+        .first { it.getExtraValueOf(Constants.Subtype.ExtraValue.COMBINING_RULES) == "bn_khipro" }
+
+    @Test fun `khipro composes bengali, space commits and delete edits the composing word`() {
+        setText("")
+        latinIME.switchToSubtype(khiproSubtype())
+        currentScript = ScriptUtils.SCRIPT_BENGALI
+        chainInput("ami")
+        assertEquals("আমি", composer.typedWord)
+        assertEquals("bn_khipro", composer.combiningSpec)
+        input(' ')
+        assertEquals("আমি ", text)
+        assertFalse(composer.isComposingWord)
+        chainInput("kotha")
+        assertEquals("আমি কথা", text)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("আমি কথ", text)
+        assertEquals("কথ", composer.typedWord)
+    }
+
+    @Test fun `khipro word survives the word composer copy`() {
+        // the copy is what Suggest gets; Khipro must keep its combining spec too (WordComposer copy fix)
+        setText("")
+        latinIME.switchToSubtype(khiproSubtype())
+        currentScript = ScriptUtils.SCRIPT_BENGALI
+        chainInput("ami")
+        assertEquals("bn_khipro", composer.copy().combiningSpec)
+        assertEquals("আমি", composer.copy().typedWord)
     }
 
     @Test fun `singlish never logs typed text`() {
