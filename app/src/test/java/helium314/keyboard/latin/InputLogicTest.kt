@@ -1029,7 +1029,7 @@ class InputLogicTest {
         chainInput("gedara")
         assertFalse(settingsValues.needsToLookupSuggestions())
         inputLogic.performUpdateSuggestionStripSync(settingsValues, InputStyle.TYPING)
-        assertTrue(inputLogic.mSuggestedWords.isEmpty)
+        assertTrue(inputLogic.mSuggestedWords.isEmpty())
         assertEquals(0, ShadowFacilitator2.validWordLookups)
     }
 
@@ -1448,7 +1448,7 @@ class InputLogicTest {
 
         if (!latinIME.prefs().getString(Settings.PREF_SELECTED_SUBTYPE, "")!!.contains("CombiningRules") // check fails if combiner merges symbols
             && !(codePoint == Constants.CODE_SPACE && oldBefore.lastOrNull() == ' ') // check fails when 2 spaces are converted into a period
-            && !latinIME.mInputLogic.mSuggestedWords.mWillAutoCorrect // autocorrect obviously creates inconsistencies
+            && !latinIME.mInputLogic.mSuggestedWords.willAutoCorrect // autocorrect obviously creates inconsistencies
             ) {
             if (phantomSpaceToInsert.isEmpty())
                 assertEquals(oldBefore + insert, textBeforeCursor)
