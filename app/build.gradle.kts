@@ -50,7 +50,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.ranger.myheliboard"
+        applicationId = "com.rananjaya.rcbboard"
         minSdk = 21
         targetSdk = 37
         // The release workflow passes -PrcbboardVersionCode / -PrcbboardVersionName (see docs/ci-cd.md).

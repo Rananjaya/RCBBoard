@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Stage 1 - Development: after every push to develop (for example a merged pull request),
 # run the CI checks on the exact pushed commit and build the Debug APK from it
-# (:app:assembleDebug, com.ranger.myheliboard.debug, signed with the persistent
+# (:app:assembleDebug, com.rananjaya.rcbboard.debug, signed with the persistent
 # RCBBoard debug key). No production secrets, no tags, no releases. See docs/ci-cd.md.
 name: Development
 
@@ -20,7 +20,7 @@ env:
   JAVA_VERSION: "21"
   ANDROID_PACKAGES: "platform-tools platforms;android-37.0 build-tools;36.0.0 ndk;28.0.13004108"
   BUILD_TOOLS_VERSION: "36.0.0"
-  APP_ID: com.ranger.myheliboard.debug
+  APP_ID: com.rananjaya.rcbboard.debug
 
 jobs:
   checks:

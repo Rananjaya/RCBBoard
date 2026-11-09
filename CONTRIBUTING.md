@@ -40,7 +40,7 @@ Please test your change and say in the pull request how you tested it:
   Some tests already fail on the unchanged upstream code, and are not caused by RCBBoard: `CharacterIteratorTest` (`lastGraphemeFails`, `firstGraphemeFails`), `XLinkTest` (`layoutsLinks`, `readmeLinks`, `knownDictionaries`; these need network access), `InputLogicTest.insertLetterIntoWordHangulFails` and `StringUtilsTest.detectEmojiAtStartFails`. Your change should not add new failures.
 - **Native tests**, if you changed `app/src/main/jni`: `app/src/main/jni/tests/host/run_host_tests.sh`
   Needs clang++, GoogleTest (for example `brew install googletest`) and a JDK for `jni.h` (set `JAVA_HOME`). The tests run with AddressSanitizer and UndefinedBehaviorSanitizer and must all pass. Known upstream failures are listed in `app/src/main/jni/tests/host/known_upstream_failures.txt`.
-- **Build**: `./gradlew :app:assembleDebug` (the debug app installs as `com.ranger.myheliboard.debug`, next to the normal app).
+- **Build**: `./gradlew :app:assembleDebug` (the debug app installs as `com.rananjaya.rcbboard.debug`, next to the normal app).
 - **Try it** on a device or emulator if your change affects typing, suggestions, layouts or the UI, including English and Sinhala (standard and Wijesekara layouts).
 - **Security fixes** should come with a test that fails before the fix and passes after it.
 

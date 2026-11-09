@@ -45,7 +45,7 @@ env:
   JAVA_VERSION: "21"
   ANDROID_PACKAGES: "platform-tools platforms;android-37.0 build-tools;36.0.0 ndk;28.0.13004108"
   BUILD_TOOLS_VERSION: "36.0.0"
-  APP_PACKAGE: com.ranger.myheliboard
+  APP_PACKAGE: com.rananjaya.rcbboard
   MIN_SDK: "21"
   # SHA-256 of the existing RCBBoard release signing certificate (also in README.md).
   EXPECTED_CERT_SHA256: 0b01373116d4a7b57646c4c7e2ffc28af91870bdbeabb4b8c05c00f313e2291b
