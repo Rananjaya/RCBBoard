@@ -18,8 +18,12 @@ sys.path.insert(0, HERE)
 import stage_gate as sg  # noqa: E402
 
 WORKFLOWS = os.path.join(HERE, "..", "workflows")
+APP_BUILD_FILE = os.path.join(HERE, "..", "..", "app", "build.gradle.kts")
 # The existing RCBBoard production signing certificate; it must never change.
 RELEASE_CERT_SHA256 = "0b01373116d4a7b57646c4c7e2ffc28af91870bdbeabb4b8c05c00f313e2291b"
+# The registered application ID (permanent, see docs/ci-cd.md "Application ID"); debug builds add ".debug".
+PRODUCTION_PACKAGE = "com.rananjaya.rcbboard"
+DEBUG_PACKAGE = PRODUCTION_PACKAGE + ".debug"
 # Job names in ci.yml = the required status checks of the develop branch ruleset.
 REQUIRED_CHECKS = ("Release script tests", "Unit tests", "Native tests (ASan/UBSan)", "Debug build")
 
@@ -91,6 +95,28 @@ class AllWorkflowsTest(unittest.TestCase):
                     in_run = False
                 if in_run or re.match(r"^(- )?run: \S", stripped):
                     self.assertNotRegex(line, r"\$\{\{\s*(inputs|github\.event)\.", f"{name}: {stripped}")
+
+
+class PackageIdTest(unittest.TestCase):
+    def test_build_file_uses_the_registered_application_id(self):
+        with open(APP_BUILD_FILE, encoding="utf-8") as f:
+            ids = re.findall(r'^\s*applicationId = "([^"]+)"', f.read(), re.MULTILINE)
+        self.assertEqual(ids, [PRODUCTION_PACKAGE])
+
+    def test_release_signs_and_checks_the_production_package(self):
+        text = read("release.yml")
+        self.assertIn(f"  APP_PACKAGE: {PRODUCTION_PACKAGE}\n", text)
+        self.assertIn('--package "$APP_PACKAGE"', step(text, "Sign and verify APK"))
+
+    def test_debug_workflows_sign_and_check_the_debug_package(self):
+        for name in ("development.yml", "qa.yml"):
+            text = read(name)
+            self.assertIn(f"  APP_ID: {DEBUG_PACKAGE}\n", text, name)
+            self.assertIn('--package "$APP_ID"', step(text, "Sign and verify the APK"), name)
+
+    def test_no_old_application_id_in_workflows(self):
+        for name in workflow_files():
+            self.assertNotIn("com.ranger.myheliboard", read(name), name)
 
 
 class CiChecksTest(unittest.TestCase):
@@ -165,7 +191,7 @@ class ReleaseTest(unittest.TestCase):
         for part in ('--expected-cert-sha256 "$EXPECTED_CERT_SHA256"', "secrets.ANDROID_KEYSTORE_PASSWORD",
                      "secrets.ANDROID_KEY_ALIAS", "secrets.ANDROID_KEY_PASSWORD", '--package "$APP_PACKAGE"'):
             self.assertIn(part, s)
-        self.assertIn("APP_PACKAGE: com.ranger.myheliboard\n", self.text)
+        self.assertIn(f"APP_PACKAGE: {PRODUCTION_PACKAGE}\n", self.text)
         self.assertIn("rm -f \"$RUNNER_TEMP/rcbboard-release.keystore\"", step(self.text, "Remove keystore"))
         self.assertIn("if: always()", step(self.text, "Remove keystore"))
 
