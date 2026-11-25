@@ -147,9 +147,9 @@ Including this dictionary does not mean that Laknath Semage, Buddhika Laknath, o
 
 Sithakuru (GPL-3.0-only) was consulted, but its layout could not be read and nothing from it was used. Mentioning these projects does not mean they endorse RCBBoard.
 
-## Toolbar icons (Material Symbols)
+## Toolbar, menu and tutorial icons (Material Symbols)
 
-The toolbar icons in `app/src/main/res/drawable/ic_toolbar_*.xml` are [Material Symbols](https://github.com/google/material-design-icons) (Rounded style, weight 400, grade 0, unfilled, 24 dp) by Google, licensed under the Apache License 2.0 (see `LICENSE-Apache-2.0` in the repository root). Only the `android:tint` and `android:autoMirrored` attributes were removed and the fill colour set to white, because RCBBoard colours the icons at runtime. Each file names the symbol it comes from.
+The toolbar, main menu and tutorial icons in `app/src/main/res/drawable/ic_toolbar_*.xml`, `ic_menu_*.xml` and `ic_onboarding_*.xml` are [Material Symbols](https://github.com/google/material-design-icons) (Rounded style, weight 400, grade 0, unfilled, 24 dp) by Google, licensed under the Apache License 2.0 (see `LICENSE-Apache-2.0` in the repository root). Only the `android:tint` and `android:autoMirrored` attributes were removed and the fill colour set to white, because RCBBoard colours the icons at runtime. Each file names the symbol it comes from.
 
 ## App icon letters (Noto fonts)
 

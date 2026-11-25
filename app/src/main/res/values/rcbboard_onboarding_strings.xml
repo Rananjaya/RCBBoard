@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- RCBBoard: texts of the first-launch tutorial (settings/onboarding). Describe only features RCBBoard has.
+     Translations are welcome. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="onboarding_page_counter">%1$d of %2$d</string>
+    <string name="onboarding_page_counter_description">Page %1$d of %2$d</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_close">Close</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_get_started">Get started</string>
+    <string name="onboarding_done">Done</string>
+
+    <string name="onboarding_welcome_title">Welcome to RCBBoard</string>
+    <string name="onboarding_welcome_body">A private, offline keyboard for English and Sinhala.</string>
+    <string name="onboarding_welcome_point_private">No internet permission: what you type stays on your phone</string>
+    <string name="onboarding_welcome_point_languages">English (UK) and Sinhala (Singlish) are ready to use</string>
+    <string name="onboarding_welcome_point_suggestions">Word suggestions from the bundled English and Sinhala dictionaries</string>
+
+    <string name="onboarding_enable_title">Turn on RCBBoard</string>
+    <string name="onboarding_enable_body">Android only lets you type with keyboards that you have turned on.</string>
+    <string name="onboarding_enable_point_open">Tap Open keyboard settings</string>
+    <string name="onboarding_enable_point_turn_on">Turn on RCBBoard, then come back here</string>
+    <string name="onboarding_enable_point_warning">Android warns that a keyboard can collect what you type. RCBBoard has no internet permission, so it can\'t send it anywhere.</string>
+    <string name="onboarding_enable_action">Open keyboard settings</string>
+    <string name="onboarding_enable_done">RCBBoard is turned on</string>
+
+    <string name="onboarding_select_title">Make RCBBoard your keyboard</string>
+    <string name="onboarding_select_body">Choose RCBBoard in Android\'s list of keyboards. You can switch keyboards again at any time.</string>
+    <string name="onboarding_select_action">Choose keyboard</string>
+    <string name="onboarding_select_done">RCBBoard is your keyboard</string>
+    <string name="onboarding_select_needs_enable">Turn on RCBBoard first.</string>
+    <string name="onboarding_select_enable_action">Turn on RCBBoard</string>
+
+    <string name="onboarding_languages_title">English and Sinhala</string>
+    <string name="onboarding_languages_body">Type Sinhala the way you know. These two are turned on:</string>
+    <string name="onboarding_languages_english">English (UK)</string>
+    <string name="onboarding_languages_english_detail">QWERTY, with suggestions and next-word predictions</string>
+    <string name="onboarding_languages_singlish">Sinhala (Singlish)</string>
+    <string name="onboarding_languages_singlish_detail">Sinhala typed with English letters</string>
+    <string name="onboarding_languages_more">English (US), Sinhala and Sinhala (Wijesekara) are also included. Turn them on in Languages &amp; Layouts.</string>
+    <string name="onboarding_languages_try">Try it here</string>
+    <string name="onboarding_languages_try_needs_keyboard">Make RCBBoard your keyboard to try it here.</string>
+
+    <string name="onboarding_switch_title">Switch languages</string>
+    <string name="onboarding_switch_body">Long-press the space bar to choose another language. The space bar shows the language you are typing in.</string>
+    <string name="onboarding_switch_point_comma">Long-pressing the comma key also shows a language button</string>
+    <string name="onboarding_switch_point_settings">Turn languages on or off in Languages &amp; Layouts</string>
+    <string name="onboarding_switch_key">Show a language key</string>
+    <string name="onboarding_switch_key_summary">Adds a key next to the comma for switching languages</string>
+
+    <string name="onboarding_features_title">Handy features</string>
+    <string name="onboarding_features_body">A few things that are easy to miss:</string>
+    <string name="onboarding_features_toolbar">Tap the arrow at the left of the suggestions for the toolbar: undo, redo, select, copy, paste and cursor keys</string>
+    <string name="onboarding_features_comma">Long-press the comma key for clipboard history, emoji, one-handed mode and settings</string>
+    <string name="onboarding_features_emoji">Emoji suggestions appear as you type, for example for \"pizza\"</string>
+    <string name="onboarding_features_learning">Suggestions learn from what you type, on your phone only</string>
+    <string name="onboarding_features_settings">Change the theme, colours, size and toolbar in the settings</string>
+
+    <string name="onboarding_done_title">Ready to type</string>
+    <string name="onboarding_done_body">You can open the settings at any time to adjust RCBBoard, or to see this tutorial again (General → Tutorial).</string>
+    <string name="onboarding_status_enabled">Turned on</string>
+    <string name="onboarding_status_current">Your current keyboard</string>
+    <string name="onboarding_status_not_yet">Not yet</string>
+    <string name="onboarding_theme_title">Choose a look</string>
+    <string name="onboarding_theme_system">Follow system</string>
+    <string name="onboarding_theme_light">Light</string>
+    <string name="onboarding_theme_dark">Dark</string>
+    <string name="onboarding_theme_dynamic">Dynamic colours</string>
+    <string name="onboarding_theme_try">See the keyboard here</string>
+
+    <string name="main_menu_tutorial">Tutorial</string>
+    <string name="main_menu_tutorial_summary">Setup and typing tips</string>
+    <string name="setup_card_title">Finish setting up RCBBoard</string>
+    <string name="setup_card_not_enabled">RCBBoard is not turned on yet.</string>
+    <string name="setup_card_not_current">RCBBoard is not your current keyboard.</string>
+    <string name="setup_card_action">Set up</string>
+</resources>
