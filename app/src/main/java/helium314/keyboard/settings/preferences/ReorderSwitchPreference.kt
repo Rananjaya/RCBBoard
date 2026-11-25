@@ -22,7 +22,7 @@ import helium314.keyboard.latin.utils.getStringResourceOrName
 import helium314.keyboard.latin.utils.prefs
 import helium314.keyboard.settings.Setting
 import helium314.keyboard.settings.dialogs.ReorderDialog
-import helium314.keyboard.settings.GetIconOrEmpty
+import helium314.keyboard.settings.GetToolbarIconOrEmpty
 
 @Composable
 fun ReorderSwitchPreference(setting: Setting, default: String) {
@@ -53,7 +53,7 @@ fun ReorderSwitchPreference(setting: Setting, default: String) {
             displayItem = { item ->
                 var checked by rememberSaveable { mutableStateOf(item.state) }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    KeyboardIconsSet.instance.GetIconOrEmpty(item.name)
+                    KeyboardIconsSet.instance.GetToolbarIconOrEmpty(item.name)
                     val text = item.name.lowercase().getStringResourceOrName("", ctx)
                     val actualText = if (text != item.name.lowercase()) text
                         else item.name.lowercase().getStringResourceOrName("popup_keys_", ctx)

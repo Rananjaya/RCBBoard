@@ -99,8 +99,8 @@
     <string name="settings_no_limit">Korlátlan</string>
     <string name="enable_clipboard_history">Vágólap előzményeinek engedélyezése</string>
     <string name="key_borders">Betűhatárok</string>
-    <string name="ime_settings">HeliBoard beállítások</string>
-    <string name="android_spell_checker_settings">HeliBoard helyesírás-ellenőrző beállításai</string>
+    <string name="ime_settings">RCBBoard beállítások</string>
+    <string name="android_spell_checker_settings">RCBBoard helyesírás-ellenőrző beállításai</string>
     <string name="settings_category_additional_keys">További billentyűk</string>
     <string name="delete_swipe_summary">A törlés billentyűről való csúsztatással nagyobb szövegrészleteket jelölhet ki és távolíthat el</string>
     <string name="enable_clipboard_history_summary">Ha le van tiltva, a vágólapbillentyű beilleszti a vágólap tartalmát, ha van</string>
@@ -112,7 +112,7 @@
     <string name="prefs_long_press_keyboard_to_change_lang_summary">A szóközbillentyű nyomva tartásával a beviteli mód kiválasztási menüje jelenik meg</string>
     <string name="prefs_long_press_keyboard_to_change_lang">Beviteli mód megváltoztatása a szóközzel</string>
     <string name="day_night_mode">Automatikus nappali/éjszakai mód</string>
-    <string name="spell_checker_service_name">HeliBoard helyesírás-ellenőrző</string>
+    <string name="spell_checker_service_name">RCBBoard helyesírás-ellenőrző</string>
     <string name="delete_swipe">Törlés csúsztatással</string>
     <string name="show_emoji_key">Emodzsibillentyű</string>
     <string name="incognito">Inkognitómód kényszerítése</string>
@@ -550,4 +550,7 @@
     <string name="recent_emojis_cleared">Legutóbbi emodzsik törlése</string>
     <string name="prefs_enable_hardware_keyboard">Hardveres billentyűzet-támogatás</string>
     <string name="accent_shifted_icon">Kiemelt Shift billentyűikon</string>
+    <string name="delete_swipe_letters">Betűk</string>
+    <string name="delete_swipe_words">Szavak</string>
+    <string name="gesture_data_single_instance_per_word">Szavanként csak egy bejegyzést megjelenítése</string>
 </resources>

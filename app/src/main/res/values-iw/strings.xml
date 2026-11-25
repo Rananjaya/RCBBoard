@@ -104,16 +104,16 @@
     <string name="prefs_keyboard_height_scale">קנה-מידה גובה המקלדת</string>
     <string name="key_borders">גבולות מקלדת</string>
     <string name="day_night_mode">מצב יום/לילה אוטומטי</string>
-    <string name="android_spell_checker_settings">הגדרות בודק האיות של HeliBoard</string>
+    <string name="android_spell_checker_settings">הגדרות בודק האיות של RCBBoard</string>
     <string name="prefs_long_press_keyboard_to_change_lang">שינוי שיטת ההזנה על-ידי מקש רווח</string>
     <string name="show_emoji_key">מקש אמוג\'י</string>
     <string name="subtype_akkhor_bn_BD">%s (תווים)</string>
-    <string name="spell_checker_service_name">בודק האיות של HeliBoard</string>
+    <string name="spell_checker_service_name">בודק האיות של RCBBoard</string>
     <string name="settings_category_clipboard_history">היסטוריית הלוח</string>
     <string name="autospace_after_punctuation">הוספת רווח אוטומטית אחרי סימני פיסוק</string>
     <string name="day_night_mode_summary">המראה יעקוב אחר הגדרות המערכת</string>
     <string name="autospace_after_punctuation_summary">הוספת רווח אוטומטית לאחר סימני פיסוק בעת הקלדת מילה חדשה</string>
-    <string name="ime_settings">הגדרות HeliBoard</string>
+    <string name="ime_settings">הגדרות RCBBoard</string>
     <string name="settings_category_input">קֶלֶט</string>
     <string name="settings_category_experimental">נסיוני</string>
     <string name="settings_category_miscellaneous">שונות</string>
@@ -552,4 +552,7 @@
     <string name="show_dpad_key">מקש D-pad (מקשי כיוון)</string>
     <string name="accent_shifted_icon">סמל shift מודגש</string>
     <string name="prefs_enable_hardware_keyboard">תמיכה במקלדת חומרה</string>
+    <string name="gesture_data_single_instance_per_word">הצגת מופע יחיד לכל מילה</string>
+    <string name="delete_swipe_words">מילים</string>
+    <string name="delete_swipe_letters">אותיות</string>
 </resources>

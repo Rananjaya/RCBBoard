@@ -190,41 +190,44 @@ class LanguageAllowListTest {
     }
 
     /** Languages a new install starts with (nothing chosen yet) for the current system language. */
-    private fun defaultEnabledLocales(): List<Locale> {
+    private fun defaultEnabledSubtypes(): List<InputMethodSubtype> {
         latinIME.prefs().edit { putString(Settings.PREF_ENABLED_SUBTYPES, "") }
         SubtypeSettings.reloadSystemLocales(latinIME)
         SubtypeSettings.reloadEnabledSubtypes(latinIME)
-        return SubtypeSettings.getEnabledSubtypes(true).map { it.locale() }
+        return SubtypeSettings.getEnabledSubtypes(true)
+    }
+
+    /** RCBBoard starts with English (UK) as the default keyboard and Sinhala (Singlish), for any system language. */
+    private fun assertStartsWithEnglishUkAndSinglish() {
+        val enabled = defaultEnabledSubtypes()
+        assertEquals(listOf(enGb, "si-LK".constructLocale()), enabled.map { it.locale() })
+        assertTrue("CombiningRules=si_singlish" in enabled[1].extraValue, enabled[1].extraValue)
+        assertEquals(enGb, SubtypeSettings.getSelectedSubtype(latinIME.prefs()).locale())
     }
 
     @Test
     @Config(qualifiers = "de-rDE")
-    fun `system language German starts with English (US)`() {
-        val enabled = defaultEnabledLocales()
+    fun `system language German starts with English (UK) and Singlish`() {
         assertTrue(SubtypeSettings.getSystemLocales().any { it.language == "de" }, "${SubtypeSettings.getSystemLocales()}")
-        assertEquals(listOf(Locale.US), enabled)
+        assertStartsWithEnglishUkAndSinglish()
     }
 
     @Test
     @Config(qualifiers = "en-rGB")
-    fun `system language English (UK) starts with English (UK)`() {
-        val enabled = defaultEnabledLocales()
-        assertTrue(enGb in SubtypeSettings.getSystemLocales(), "${SubtypeSettings.getSystemLocales()}")
-        assertEquals(listOf(enGb), enabled)
+    fun `system language English (UK) starts with English (UK) and Singlish`() {
+        assertStartsWithEnglishUkAndSinglish()
     }
 
     @Test
     @Config(qualifiers = "en-rAU")
-    fun `system language English (Australia) starts with English (US)`() {
-        val enabled = defaultEnabledLocales()
-        assertTrue("en-AU".constructLocale() in SubtypeSettings.getSystemLocales(), "${SubtypeSettings.getSystemLocales()}")
-        assertEquals(listOf(Locale.US), enabled)
+    fun `system language English (Australia) starts with English (UK) and Singlish`() {
+        assertStartsWithEnglishUkAndSinglish()
     }
 
     @Test
     @Config(qualifiers = "en-rUS")
-    fun `system language English (US) starts with English (US)`() {
-        assertEquals(listOf(Locale.US), defaultEnabledLocales())
+    fun `system language English (US) starts with English (UK) and Singlish`() {
+        assertStartsWithEnglishUkAndSinglish()
     }
 
     @Test fun `switching between English (US), English (UK), Sinhala and Wijesekara`() {

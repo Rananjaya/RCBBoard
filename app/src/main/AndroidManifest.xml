@@ -68,13 +68,15 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
             android:icon="@mipmap/ic_launcher"
             android:windowSoftInputMode="adjustResize"
             android:exported="true">
-            <!-- intent filter for opening .dict files -->
+            <!-- RCBBoard: the intent filter for opening .dict files from other apps was removed, because
+                 users can't add dictionaries (RcbFeatures.DICTIONARY_IMPORT_ENABLED). To allow it again, add:
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:mimeType="application/octet-stream" android:scheme="content" android:host="*" android:pathPattern=".*\\.dict" />
             </intent-filter>
+            -->
         </activity>
 
         <activity android:name=".spellcheck.SpellCheckerSettingsActivity"

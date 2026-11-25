@@ -238,6 +238,7 @@ object SubtypeSettings {
     @Suppress("SameReturnValue")
     private fun getDefaultEnabledSubtypes(): List<InputMethodSubtype> {
         if (systemSubtypes.isNotEmpty()) return systemSubtypes
+        rcbBoardDefaultSubtypes()?.let { systemSubtypes.addAll(it); return systemSubtypes }
         val allowedSubtypeLocales = resourceSubtypesByLocale.keys.filter { isAllowedLocale(it) }
         val subtypes = systemLocales.mapNotNull { locale ->
             val subtypesOfLocale = resourceSubtypesByLocale[locale]?.takeIf { isAllowedLocale(locale) }
@@ -253,6 +254,22 @@ object SubtypeSettings {
         }
         return systemSubtypes
     }
+
+    /**
+     * RCBBoard: languages a new install starts with, whatever the system language: English (UK) as the
+     * default keyboard, and Sinhala (Singlish). Null if the allow-list is empty (upstream behaviour)
+     * or English (UK) is not available.
+     */
+    private fun rcbBoardDefaultSubtypes(): List<InputMethodSubtype>? {
+        if (allowedLocales == null) return null
+        val englishUk = resourceSubtypesByLocale[RCBBOARD_DEFAULT_LOCALE]?.firstOrNull() ?: return null
+        val singlish = resourceSubtypesByLocale[SINHALA_LOCALE]?.firstOrNull { SINGLISH_COMBINING_RULES in it.extraValue }
+        return listOfNotNull(englishUk, singlish)
+    }
+
+    private val RCBBOARD_DEFAULT_LOCALE = Locale.UK // en-GB
+    private val SINHALA_LOCALE = Locale.forLanguageTag("si-LK")
+    private const val SINGLISH_COMBINING_RULES = "CombiningRules=si_singlish"
 
     private fun loadResourceSubtypes(resources: Resources) {
         getResourceSubtypes(resources).forEach {

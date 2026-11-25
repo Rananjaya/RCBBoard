@@ -95,12 +95,12 @@
     <string name="settings_category_clipboard_history">Zwischenablage-Verlauf</string>
     <string name="settings_category_correction">Korrekturen</string>
     <string name="settings_category_suggestions">Vorschläge</string>
-    <string name="android_spell_checker_settings">HeliBoard-Rechtschreibprüfungs-Einstellungen</string>
-    <string name="ime_settings">HeliBoard-Einstellungen</string>
+    <string name="android_spell_checker_settings">RCBBoard-Rechtschreibprüfungs-Einstellungen</string>
+    <string name="ime_settings">RCBBoard-Einstellungen</string>
     <string name="settings_category_experimental">Experimentell</string>
     <string name="settings_no_limit">Keine Begrenzung</string>
     <string name="abbreviation_unit_minutes">%s min</string>
-    <string name="spell_checker_service_name">HeliBoard-Rechtschreibprüfung</string>
+    <string name="spell_checker_service_name">RCBBoard-Rechtschreibprüfung</string>
     <string name="show_emoji_key">Emoji-Taste</string>
     <string name="settings_category_input">Eingabe</string>
     <string name="settings_category_additional_keys">Zusätzliche Tasten</string>
@@ -550,4 +550,7 @@
     <string name="recent_emojis_cleared">Zuletzt verwendete Emojis gelöscht</string>
     <string name="prefs_enable_hardware_keyboard">Unterstützung für Hardwaretastaturen</string>
     <string name="accent_shifted_icon">Akzentfarbe für das Umschaltsymbol</string>
+    <string name="delete_swipe_letters">Buchstaben</string>
+    <string name="delete_swipe_words">Wörter</string>
+    <string name="gesture_data_single_instance_per_word">Nur einen Eintrag pro Wort anzeigen</string>
 </resources>

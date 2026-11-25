@@ -88,7 +88,17 @@ fun IconOrImage(@DrawableRes resId: Int, name: String?, sizeDp: Int) {
 
 @Composable
 fun KeyboardIconsSet.GetIconOrEmpty(name: String?) {
-    val iconId = iconIds[name?.lowercase()]
+    IconOrEmpty(iconIds[name?.lowercase()], name)
+}
+
+/** like [GetIconOrEmpty], but shows the icon used in the toolbar (RCBBoard toolbar icons) if there is one */
+@Composable
+fun KeyboardIconsSet.GetToolbarIconOrEmpty(name: String?) {
+    IconOrEmpty(toolbarIconIds[name?.lowercase()] ?: iconIds[name?.lowercase()], name)
+}
+
+@Composable
+private fun IconOrEmpty(iconId: Int?, name: String?) {
     Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
         if (iconId != null)
             Icon(painterResourceCompat(iconId), name, Modifier.fillMaxSize(0.8f))

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- RCBBoard: texts of the main menu (MainSettingsScreen). Translations are welcome. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="main_menu_group_typing">Typing</string>
+    <string name="main_menu_group_look">Look and feel</string>
+    <string name="main_menu_group_general">General</string>
+    <string name="main_menu_preferences_summary">Keys, sound, vibration and clipboard</string>
+    <string name="main_menu_appearance_summary">Theme, colours, size, fonts and icons</string>
+    <string name="main_menu_toolbar_summary">Toolbar keys and behaviour</string>
+    <string name="main_menu_correction_summary">Suggestions and autocorrection</string>
+    <string name="main_menu_secondary_layouts_summary">Symbols, numbers and more</string>
+    <string name="main_menu_dictionaries_summary">Dictionaries of the bundled languages</string>
+    <string name="main_menu_advanced_summary">Backup and restore, and more options</string>
+    <string name="main_menu_about_summary">Version, licences and source code</string>
+    <!-- About > Open-source licence: the licence, and the projects RCBBoard is based on (required attribution) -->
+    <string name="about_license_attribution">GNU General Public License v3.0. RCBBoard is based on HeliBoard, OpenBoard and the Android Open Source Project keyboard.</string>
+    <!-- Colours > Load -->
+    <string name="load_colors_message">Choose a colour theme file that you saved before.</string>
+</resources>

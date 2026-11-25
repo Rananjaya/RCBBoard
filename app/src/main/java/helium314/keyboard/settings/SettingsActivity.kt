@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.settings
 
+import android.content.ContentResolver
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
@@ -20,13 +21,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import helium314.keyboard.settings.onboarding.Onboarding
+import helium314.keyboard.settings.onboarding.OnboardingScreen
+import helium314.keyboard.latin.define.RcbFeatures
 import helium314.keyboard.compat.locale
 import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.keyboard.internal.KeyboardIconsSet
@@ -43,6 +45,7 @@ import helium314.keyboard.latin.utils.ExecutorUtils
 import helium314.keyboard.latin.utils.GestureDataGatheringSettings
 import helium314.keyboard.latin.utils.IntentUtils
 import helium314.keyboard.latin.utils.JniUtils
+import helium314.keyboard.latin.utils.Log
 import helium314.keyboard.latin.utils.Theme
 import helium314.keyboard.latin.utils.UncachedInputMethodManagerUtils
 import helium314.keyboard.latin.utils.prefs
@@ -66,9 +69,27 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
     private val crashReportFiles = MutableStateFlow<List<File>>(emptyList())
     private var paused = true
 
+    /** RCBBoard tutorial: shown on first start, and when opened from the main menu or the setup card. */
+    private data class OnboardingRequest(val replay: Boolean, val startPage: Int)
+    private val onboardingRequest = MutableStateFlow<OnboardingRequest?>(null)
+
+    /** Opens the tutorial (from the main menu or the setup card). */
+    fun showOnboarding(startPage: Int = Onboarding.PAGE_WELCOME) {
+        onboardingRequest.value = OnboardingRequest(replay = true, startPage = startPage)
+    }
+
+    /** Skip, Close, Get started and Done: remember it, so it's not shown on start again. */
+    private fun closeOnboarding() {
+        Onboarding.setCompleted(prefs)
+        onboardingRequest.value = null
+    }
+
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // RCBBoard: without dictionary import, ignore .dict files sent by other apps (ACTION_VIEW, see below)
+        if (!RcbFeatures.DICTIONARY_IMPORT_ENABLED && intent?.action == Intent.ACTION_VIEW)
+            intent = null
         if (Settings.getValues() == null) {
             val inputAttributes = InputAttributes(EditorInfo(), false, packageName)
             Settings.getInstance().loadSettings(this, resources.configuration.locale(), inputAttributes)
@@ -82,6 +103,14 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
         settingsContainer = SettingsContainer(this)
 
         val spellchecker = intent?.getBooleanExtra("spellchecker", false) ?: false
+        onboardingRequest.value = when {
+            spellchecker -> null
+            // keep an open tutorial when the activity is recreated, e.g. on rotation
+            savedInstanceState?.getBoolean(STATE_ONBOARDING) == true -> OnboardingRequest(
+                savedInstanceState.getBoolean(STATE_ONBOARDING_REPLAY), Onboarding.PAGE_WELCOME)
+            Onboarding.shouldShowOnStart(this, prefs) -> OnboardingRequest(replay = false, startPage = Onboarding.PAGE_WELCOME)
+            else -> null
+        }
 
         val cv = ComposeView(context = this)
         setContentView(cv)
@@ -91,10 +120,7 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
                     val dictUri by dictUriFlow.collectAsState()
                     val crashReports by crashReportFiles.collectAsState()
                     val crashFilePicker = filePicker { saveCrashReports(it) }
-                    var showWelcomeWizard by rememberSaveable { mutableStateOf(
-                        !UncachedInputMethodManagerUtils.isThisImeCurrent(this, imm)
-                                || !UncachedInputMethodManagerUtils.isThisImeEnabled(this, imm)
-                    ) }
+                    val onboarding by onboardingRequest.collectAsState()
                     if (spellchecker)
                         Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { innerPadding ->
                             Column(Modifier.padding(innerPadding)) {
@@ -113,8 +139,14 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
                         }
                     else {
                         SettingsNavHost(onClickBack = { this.finish() })
-                        if (showWelcomeWizard) {
-                            WelcomeWizard(close = { showWelcomeWizard = false }, finish = this::finish)
+                        val request = onboarding
+                        if (request != null) {
+                            OnboardingScreen(
+                                replay = request.replay,
+                                startPage = request.startPage,
+                                onSkip = ::closeOnboarding,
+                                onFinish = ::closeOnboarding,
+                            )
                         } else if (crashReports.isNotEmpty()) {
                             val ctx = LocalContext.current
                             ConfirmationDialog(
@@ -147,15 +179,32 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
         }
 
         if (intent?.action == Intent.ACTION_VIEW) {
-            intent?.data?.let {
+            // The activity is exported, so other apps can send any URI here, not only the content URIs
+            // of the intent filter. Only accept content URIs of other apps, so a file URI or a URI of our
+            // own (not exported) providers can't make us read our own private files, and don't crash if
+            // the content can't be read.
+            intent?.data?.takeIf { it.scheme == ContentResolver.SCHEME_CONTENT && !isOwnProvider(it) }?.let {
                 cachedDictionaryFile.delete()
-                FileUtils.copyContentUriToNewFile(it, this, cachedDictionaryFile)
-                dictUriFlow.value = it
+                try {
+                    FileUtils.copyContentUriToNewFile(it, this, cachedDictionaryFile)
+                    dictUriFlow.value = it
+                } catch (e: Exception) {
+                    Log.w("SettingsActivity", "could not read dictionary from intent", e)
+                    cachedDictionaryFile.delete()
+                }
             }
             intent = null
         }
 
         enableEdgeToEdge()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        onboardingRequest.value?.let {
+            outState.putBoolean(STATE_ONBOARDING, true)
+            outState.putBoolean(STATE_ONBOARDING_REPLAY, it.replay)
+        }
     }
 
     override fun onStart() {
@@ -186,6 +235,11 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
         forceTheme = theme
         forceNight = night
         KeyboardSwitcher.getInstance().setThemeNeedsReload()
+    }
+
+    private fun isOwnProvider(uri: Uri): Boolean {
+        val authority = uri.authority ?: return false
+        return packageManager.resolveContentProvider(authority, 0)?.packageName == packageName
     }
 
     private fun findCrashReports(onlyUnprotected: Boolean): List<File> {
@@ -229,6 +283,9 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
 
         var forceNight: Boolean? = null
         var forceTheme: String? = null
+
+        private const val STATE_ONBOARDING = "onboarding_open"
+        private const val STATE_ONBOARDING_REPLAY = "onboarding_replay"
     }
 
     override fun onSharedPreferenceChanged(prefereces: SharedPreferences?, key: String?) {
