@@ -4,7 +4,7 @@
 | --- | --- |
 | Version | **5.1.0**, versionCode **50100** (previous release: 5.0.0 / 50000) |
 | Application ID | `com.rananjaya.rcbboard` |
-| Source | `develop` at `dd82a518` (= the six feature branches merged); pushed as `release/5.1.0` |
+| Source | App code: `develop` at `dd82a518` (= the six feature branches merged). Later commits on `release/5.1.0` only change docs and the release workflow (`b7434ce2`, glide typing explicitly off) |
 | Version source | `.github/scripts/next_version.py`: new features since `rcbboard-v5.0.0` → minor bump |
 | Date | 2026-11-26 |
 | Signing | GitHub release workflow with the existing production key (see section 6) |
@@ -40,12 +40,14 @@ Run on 2026-11-26 on `dd82a518` (macOS, Gradle 9.7.1, Android Studio JBR 25).
 
 | Check | Result |
 | --- | --- |
+| **All tests** | ✅ **545 passed, 0 failed** (430 unit + 115 native) |
 | Unit tests (CI command) | ✅ 430 tests, 0 failures, 0 errors, 0 skipped |
 | Native dictionary tests (ASan/UBSan) | ✅ 115 tests passed |
 | Lint (`lintRelease`) | 68 errors (all inherited `MissingTranslation`, see below), 119 warnings, no new errors |
 | Debug build | ✅ builds |
-| Release build (5.1.0 / 50100, unsigned) | ✅ builds: `RCBBoard_5.1.0-release.apk`, 22,952,188 bytes, SHA-256 `1063c11155c8a361ec42b488e20276dcb38cc9e7d00042d034509e4227017805` (unsigned; identical across two builds) |
+| Release build (5.1.0 / 50100, unsigned) | ✅ builds, 22,952,188 bytes. Its SHA-256 depends on the Git commit it is built from: the build tools record the commit in `META-INF/version-control-info.textproto`. Builds of `dd82a518` and of `0aaf9a4e` differ only in that file; code, resources and dictionaries are identical. The checksum of the published APK is the one in the release's `SHA256SUMS.txt` |
 | Instrumentation tests | Not run: the project has no instrumentation tests |
+| CI workflow and release script tests (`.github/scripts`) | ✅ 104 tests passed (separate from the 545 app tests), including the new glide typing check |
 
 **Lint.** All 68 errors are `MissingTranslation` in `strings-talkback-descriptions.xml` (TalkBack spoken descriptions), inherited from HeliBoard: untranslated in 17 small locales (e.g. Asturian, Filipino, Welsh) and partly in others. Missing strings fall back to English; nothing breaks and typing is not affected. **Not release-blocking.** Sinhala lacks 6 of them, for a Sinhala speaker to translate: `spoken_clipboard_suggestion` (Clipboard suggestion), `spoken_description_mode_dpad` (D-pad mode), `spoken_description_mode_numpad` (Numpad mode), `spoken_description_mode_number` (Numbers mode), `spoken_description_mode_clipboard` (Clipboard mode), `spoken_description_emoji_category_eight_smiley` (Smiley). Ten strings and some resources left unused by the HeliBoard link removal show as warnings only; their translations are kept.
 
@@ -71,6 +73,7 @@ Android 15 emulator (Pixel, arm64), debug build of the same code unless noted. N
 | Typed text and emoji not in logcat | ✅ |
 | `.dict` files: no handler in 5.1.0, direct intent ignored | ✅ (the handler listed on the emulator belongs to 5.0.0) |
 | Glide typing: no option in Advanced or search | ✅ (flag off in debug and release `BuildConfig`) |
+| Glide typing in the production workflow | ✅ `release.yml` builds with `-PrcbboardGlideTyping=false` (checked by a workflow test). Built locally the same way with `ORG_GRADLE_PROJECT_rcbboardGlideTyping=true` set: `GLIDE_TYPING_ENABLED` stays `false` |
 | Light, dark, dynamic colours | ✅ |
 | Portrait, landscape, small screen (720×1280), font 130 % | ✅ |
 | About: licence attribution, Source code opens the GitHub link | ✅ |
@@ -84,6 +87,7 @@ Android 15 emulator (Pixel, arm64), debug build of the same code unless noted. N
 
 - Permissions: `READ_USER_DICTIONARY`, `WRITE_USER_DICTIONARY`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE`, `READ_CONTACTS` (only when contact suggestions are turned on), plus AndroidX's signature-level `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. **No `INTERNET`.**
 - No `android:debuggable` in the manifest.
+- Glide typing is off and cannot be enabled by users: no setting, no library loading (`RcbFeatures`), and the production workflow passes `-PrcbboardGlideTyping=false`. The glide typing code and the developer flag are kept unchanged.
 - No analytics, crash reporting, HTTP libraries, sockets or WebView in the code (dex scan for Firebase, Crashlytics, Sentry, AppCenter, Amplitude, Mixpanel, OkHttp, Retrofit, `HttpURLConnection`, `Socket`, `WebView`: none).
 - Exported components: the keyboard and spell checker services (protected by system permissions), the launcher/settings activities, `SystemBroadcastReceiver` (system broadcasts only) and AndroidX `ProfileInstallReceiver` (protected by `DUMP`). Providers are not exported.
 - No signing material in the repository or the APK; the release is signed by the GitHub workflow from protected secrets.
@@ -109,7 +113,7 @@ Android 15 emulator (Pixel, arm64), debug build of the same code unless noted. N
 ## 7. Known limitations
 
 - The 68 inherited TalkBack translation gaps (section 2).
-- Learning stores a word 25 s after it is typed (so corrections are not learned), and not in incognito mode or fields that ask keyboards not to learn, such as auto-capitalised name fields.
+- Learning stores a word 25 s after it is typed (unchanged by design, so corrections are not learned), and not in incognito mode or fields that ask keyboards not to learn, such as auto-capitalised name fields.
 - Translation updates from HeliBoard can bring back the old name in three strings; check after each update.
 - The README screenshot still shows the old icon.
 
