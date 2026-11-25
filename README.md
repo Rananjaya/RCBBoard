@@ -51,7 +51,7 @@ The [HeliBoard wiki](https://github.com/HeliBorg/HeliBoard/wiki) explains these 
 
 ## English and Sinhala
 
-RCBBoard is set up for **English (US)**, **English (UK)** and **Sinhala**. You can switch between them with the globe key. On first start, RCBBoard picks English (UK) if your phone's language is English (UK), and English (US) otherwise; you can enable more in Languages & Layouts.
+RCBBoard is set up for **English (US)**, **English (UK)** and **Sinhala**. You can switch between them with the globe key. On first start, RCBBoard uses English (UK) as the default keyboard and also enables Sinhala (Singlish), whatever your phone's language; you can enable English (US), Sinhala and Sinhala (Wijesekara) in Languages & Layouts.
 
 | Layout | What you get |
 | --- | --- |
