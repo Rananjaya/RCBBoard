@@ -17,4 +17,7 @@
     <string name="about_license_attribution">GNU General Public License v3.0. RCBBoard is based on HeliBoard, OpenBoard and the Android Open Source Project keyboard.</string>
     <!-- Colours > Load -->
     <string name="load_colors_message">Choose a colour theme file that you saved before.</string>
+    <!-- About > Privacy policy (required in the app by Google Play) -->
+    <string name="about_privacy_policy">Privacy policy</string>
+    <string name="about_privacy_policy_summary">How RCBBoard handles your data. RCBBoard has no internet access.</string>
 </resources>
