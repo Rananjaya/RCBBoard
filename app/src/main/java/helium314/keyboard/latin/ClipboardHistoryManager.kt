@@ -76,6 +76,7 @@ class ClipboardHistoryManager(
         if (clipData.itemCount == 0) return
         val clipItem = clipData.getItemAt(0) ?: return
         val description = clipData.description ?: return
+        if (!mayStoreInHistory(description)) return
         val timeStamp = ClipboardManagerCompat.getClipTimestamp(clipData)
 
         if (description.hasMimeType("text/*")) {
@@ -272,6 +273,15 @@ class ClipboardHistoryManager(
         private var dontShowCurrentSuggestion: Boolean = false
 
         const val RECENT_TIME_MILLIS = 3 * 60 * 1000L // 3 minutes (for clipboard suggestions)
+
+        /**
+         * Clips that the source app marked as sensitive (ClipDescription.EXTRA_IS_SENSITIVE, e.g.
+         * passwords or one-time codes copied from a password manager) are not stored in the
+         * clipboard history, which is kept on disk and included in backups.
+         */
+        @JvmStatic
+        fun mayStoreInHistory(description: ClipDescription?): Boolean =
+            ClipboardManagerCompat.getClipSensitivity(description) != true
 
         private fun maySaveFromUri(uri: Uri?, context: Context): Boolean {
             val maxSize = context.prefs().getInt(Settings.PREF_CLIPBOARD_FILES_SIZE_LIMIT, Defaults.PREF_CLIPBOARD_FILES_SIZE_LIMIT)

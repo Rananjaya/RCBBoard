@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.settings
 
+import android.content.ContentResolver
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
@@ -44,6 +45,7 @@ import helium314.keyboard.latin.utils.ExecutorUtils
 import helium314.keyboard.latin.utils.GestureDataGatheringSettings
 import helium314.keyboard.latin.utils.IntentUtils
 import helium314.keyboard.latin.utils.JniUtils
+import helium314.keyboard.latin.utils.Log
 import helium314.keyboard.latin.utils.Theme
 import helium314.keyboard.latin.utils.UncachedInputMethodManagerUtils
 import helium314.keyboard.latin.utils.prefs
@@ -151,10 +153,19 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
         }
 
         if (intent?.action == Intent.ACTION_VIEW) {
-            intent?.data?.let {
+            // The activity is exported, so other apps can send any URI here, not only the content URIs
+            // of the intent filter. Only accept content URIs of other apps, so a file URI or a URI of our
+            // own (not exported) providers can't make us read our own private files, and don't crash if
+            // the content can't be read.
+            intent?.data?.takeIf { it.scheme == ContentResolver.SCHEME_CONTENT && !isOwnProvider(it) }?.let {
                 cachedDictionaryFile.delete()
-                FileUtils.copyContentUriToNewFile(it, this, cachedDictionaryFile)
-                dictUriFlow.value = it
+                try {
+                    FileUtils.copyContentUriToNewFile(it, this, cachedDictionaryFile)
+                    dictUriFlow.value = it
+                } catch (e: Exception) {
+                    Log.w("SettingsActivity", "could not read dictionary from intent", e)
+                    cachedDictionaryFile.delete()
+                }
             }
             intent = null
         }
@@ -190,6 +201,11 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
         forceTheme = theme
         forceNight = night
         KeyboardSwitcher.getInstance().setThemeNeedsReload()
+    }
+
+    private fun isOwnProvider(uri: Uri): Boolean {
+        val authority = uri.authority ?: return false
+        return packageManager.resolveContentProvider(authority, 0)?.packageName == packageName
     }
 
     private fun findCrashReports(onlyUnprotected: Boolean): List<File> {
