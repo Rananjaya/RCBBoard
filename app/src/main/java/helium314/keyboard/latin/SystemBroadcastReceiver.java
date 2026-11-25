@@ -6,6 +6,7 @@
 
 package helium314.keyboard.latin;
 
+import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -77,11 +78,23 @@ public final class SystemBroadcastReceiver extends BroadcastReceiver {
                 !imm.getInputMethodList().isEmpty();
         final boolean isCurrentImeOfCurrentUser = isInputMethodManagerValidForUserOfThisProcess
                 && UncachedInputMethodManagerUtils.isThisImeCurrent(context, imm);
-        if (!isCurrentImeOfCurrentUser) {
+        if (!isCurrentImeOfCurrentUser && !isInForeground()) {
             final int myPid = Process.myPid();
             Log.i(TAG, "Killing my process: pid=" + myPid);
             Process.killProcess(myPid);
         }
+    }
+
+    /**
+     * Whether this process shows something to the user, e.g. the settings. Since Android 15, an app that leaves the
+     * stopped state (after installing, or after a force stop) gets BOOT_COMPLETED while it starts, so without this
+     * check opening the settings would kill the app right away when RCBBoard is not the current keyboard yet,
+     * which is exactly when the first-launch tutorial is needed.
+     */
+    private static boolean isInForeground() {
+        final ActivityManager.RunningAppProcessInfo info = new ActivityManager.RunningAppProcessInfo();
+        ActivityManager.getMyMemoryState(info);
+        return info.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE;
     }
 
     public static void toggleAppIcon(final Context context) {

@@ -2,6 +2,18 @@
 package helium314.keyboard.settings.screens
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Button
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import helium314.keyboard.latin.utils.getActivity
+import helium314.keyboard.settings.onboarding.Onboarding
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -90,11 +102,13 @@ fun MainSettingsScreen(
         itemContent = { it.Preference() },
     ) {
         val enabledSubtypes = SubtypeSettings.getEnabledSubtypes(true)
+        val ctx = LocalContext.current
         val showGestureData = JniUtils.sHaveGestureLib && System.currentTimeMillis() < END_DATE_EPOCH_MILLIS + TWO_WEEKS_IN_MILLIS
         Scaffold(contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)) { innerPadding ->
             Column(
                 Modifier.verticalScroll(rememberScrollState()).then(Modifier.padding(innerPadding)).padding(bottom = 8.dp)
             ) {
+                SetupCard()
                 MenuGroup(stringResource(R.string.main_menu_group_typing)) {
                     MenuItem(
                         title = stringResource(R.string.language_and_layouts_title),
@@ -163,6 +177,12 @@ fun MainSettingsScreen(
                         onClick = onClickAdvanced,
                     )
                     MenuItem(
+                        title = stringResource(R.string.main_menu_tutorial),
+                        summary = stringResource(R.string.main_menu_tutorial_summary),
+                        icon = R.drawable.ic_menu_tutorial,
+                        onClick = { (ctx.getActivity() as? SettingsActivity)?.showOnboarding() },
+                    )
+                    MenuItem(
                         title = stringResource(R.string.settings_screen_about),
                         summary = stringResource(R.string.main_menu_about_summary),
                         icon = R.drawable.ic_menu_about,
@@ -177,6 +197,44 @@ fun MainSettingsScreen(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 24.dp)
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Shown at the top while RCBBoard is not turned on or not the current keyboard (e.g. after skipping the tutorial).
+ * It never blocks the settings; "Set up" opens the tutorial at the missing step.
+ */
+@Composable
+private fun SetupCard() {
+    val ctx = LocalContext.current
+    var enabled by remember { mutableStateOf(Onboarding.isEnabled(ctx)) }
+    var current by remember { mutableStateOf(Onboarding.isCurrent(ctx)) }
+    LaunchedEffect(Unit) { // Android's keyboard settings and picker are outside the app, so check regularly
+        while (true) {
+            delay(1000)
+            enabled = Onboarding.isEnabled(ctx)
+            current = Onboarding.isCurrent(ctx)
+        }
+    }
+    if (!Onboarding.needsSetup(enabled, current)) return
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp).fillMaxWidth()
+    ) {
+        Column(Modifier.padding(20.dp).semantics { liveRegion = LiveRegionMode.Polite }) {
+            Text(stringResource(R.string.setup_card_title), style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(if (!enabled) R.string.setup_card_not_enabled else R.string.setup_card_not_current),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = { (ctx.getActivity() as? SettingsActivity)?.showOnboarding(Onboarding.setupStartPage(enabled, current)) }) {
+                Text(stringResource(R.string.setup_card_action))
             }
         }
     }
