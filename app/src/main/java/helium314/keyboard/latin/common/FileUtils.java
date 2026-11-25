@@ -45,7 +45,9 @@ public class FileUtils {
         ExecutorUtils.getBackgroundExecutor(ExecutorUtils.KEYBOARD).execute(() -> {
             try {
                 copyStreamToNewFile(context.getContentResolver().openInputStream(uri), outfile);
-            } catch (IOException e) {
+            } catch (IOException | RuntimeException e) {
+                // RuntimeException: e.g. SecurityException if we may not read the uri, or NPE if the provider
+                // returns no stream. Uncaught, it would crash the whole app (including the keyboard) on this thread.
                 allOk[0] = false;
             } finally {
                 wait.countDown();

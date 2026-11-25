@@ -271,7 +271,7 @@ abstract public class ExpandableBinaryDictionary extends Dictionary {
             final boolean isPossiblyOffensive, final int timestamp) {
         if (!mBinaryDictionary.addUnigramEntry(word, frequency, shortcutTarget, shortcutFreq,
                 false /* isBeginningOfSentence */, isNotAWord, isPossiblyOffensive, timestamp)) {
-            Log.e(TAG, "Cannot add unigram entry. word: " + word);
+            Log.e(TAG, "Cannot add unigram entry of length " + word.length()); // don't log the word itself
         }
     }
 
