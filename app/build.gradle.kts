@@ -56,6 +56,11 @@ android {
         // The release workflow passes -PrcbboardVersionCode / -PrcbboardVersionName (see docs/ci-cd.md).
         versionCode = providers.gradleProperty("rcbboardVersionCode").orNull?.toInt() ?: 4300
         versionName = providers.gradleProperty("rcbboardVersionName").orNull ?: "4.3-beta1"
+        // RCBBoard: glide typing is off by default (see RcbFeatures.GLIDE_TYPING_ENABLED and
+        // docs/MAIN_MENU_AND_FEATURE_CONFIGURATION.md). Developers: change the default here or build with
+        // -PrcbboardGlideTyping=true. It can't be changed in the app.
+        val glideTypingEnabled = providers.gradleProperty("rcbboardGlideTyping").orNull?.toBoolean() ?: false
+        buildConfigField("boolean", "GLIDE_TYPING_ENABLED", glideTypingEnabled.toString())
         ndk {
             abiFilters.clear()
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))

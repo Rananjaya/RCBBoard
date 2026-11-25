@@ -43,6 +43,7 @@ import helium314.keyboard.latin.utils.Theme
 import helium314.keyboard.settings.dialogs.TextInputDialog
 import helium314.keyboard.settings.preferences.BackupRestorePreference
 import helium314.keyboard.settings.preferences.LoadGestureLibPreference
+import helium314.keyboard.latin.define.RcbFeatures
 import helium314.keyboard.settings.preferences.TextInputPreference
 import helium314.keyboard.latin.utils.previewDark
 import androidx.core.content.edit
@@ -89,7 +90,7 @@ fun AdvancedSettingsScreen(
         Settings.PREF_EMOJI_MAX_SDK,
         Settings.PREF_URL_DETECTION,
         Settings.PREF_ENABLE_HARDWARE_KEYBOARD,
-        if (BuildConfig.BUILD_TYPE != "nouserlib") SettingsWithoutKey.LOAD_GESTURE_LIB else null
+        if (RcbFeatures.isGestureLibraryLoadingEnabled()) SettingsWithoutKey.LOAD_GESTURE_LIB else null
     )
     SearchSettingsScreen(
         onClickBack = onClickBack,
@@ -282,6 +283,8 @@ fun createAdvancedSettings(context: Context) = listOf(
     Setting(context, Settings.PREF_ENABLE_HARDWARE_KEYBOARD, R.string.prefs_enable_hardware_keyboard) {
         SwitchPreference(it, Defaults.PREF_ENABLE_HARDWARE_KEYBOARD)
     },
+) + if (!RcbFeatures.isGestureLibraryLoadingEnabled()) emptyList() else listOf(
+    // not registered at all when disabled, so the settings search can't find it either
     Setting(context, SettingsWithoutKey.LOAD_GESTURE_LIB, R.string.load_gesture_library, R.string.load_gesture_library_summary) {
         LoadGestureLibPreference(it)
     },

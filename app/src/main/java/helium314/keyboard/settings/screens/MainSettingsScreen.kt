@@ -1,6 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.settings.screens
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,12 +49,10 @@ import helium314.keyboard.latin.R
 import helium314.keyboard.latin.utils.JniUtils
 import helium314.keyboard.latin.utils.SubtypeLocaleUtils.displayName
 import helium314.keyboard.latin.utils.SubtypeSettings
-import helium314.keyboard.latin.utils.NextScreenIcon
 import helium314.keyboard.settings.SearchScreen
 import helium314.keyboard.settings.SettingsActivity
 import helium314.keyboard.latin.utils.Theme
 import helium314.keyboard.settings.initPreview
-import helium314.keyboard.settings.preferences.Preference
 import helium314.keyboard.latin.utils.previewDark
 import helium314.keyboard.settings.screens.gesturedata.END_DATE_EPOCH_MILLIS
 import helium314.keyboard.settings.screens.gesturedata.TWO_WEEKS_IN_MILLIS
@@ -77,70 +90,86 @@ fun MainSettingsScreen(
         itemContent = { it.Preference() },
     ) {
         val enabledSubtypes = SubtypeSettings.getEnabledSubtypes(true)
+        val showGestureData = JniUtils.sHaveGestureLib && System.currentTimeMillis() < END_DATE_EPOCH_MILLIS + TWO_WEEKS_IN_MILLIS
         Scaffold(contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)) { innerPadding ->
             Column(
-                Modifier.verticalScroll(rememberScrollState()).then(Modifier.padding(innerPadding))
+                Modifier.verticalScroll(rememberScrollState()).then(Modifier.padding(innerPadding)).padding(bottom = 8.dp)
             ) {
-                Preference(
-                    name = stringResource(R.string.language_and_layouts_title),
-                    description = enabledSubtypes.joinToString(", ") { it.displayName() },
-                    onClick = onClickLanguage,
-                    icon = R.drawable.ic_settings_languages
-                ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.settings_screen_preferences),
-                    onClick = onClickPreferences,
-                    icon = R.drawable.ic_settings_preferences
-                ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.settings_screen_appearance),
-                    onClick = onClickAppearance,
-                    icon = R.drawable.ic_settings_appearance
-                ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.settings_screen_toolbar),
-                    onClick = onClickToolbar,
-                    icon = R.drawable.ic_settings_toolbar
-                ) { NextScreenIcon() }
-                if (JniUtils.sHaveGestureLib)
-                    Preference(
-                        name = stringResource(R.string.settings_screen_gesture),
-                        onClick = onClickGestureTyping,
-                        icon = R.drawable.ic_settings_gesture
-                    ) { NextScreenIcon() }
-                // we don't even show the menu if data gathering phase ended more than 2 weeks ago
-                if (JniUtils.sHaveGestureLib && System.currentTimeMillis() < END_DATE_EPOCH_MILLIS + TWO_WEEKS_IN_MILLIS)
-                    Preference(
-                        name = stringResource(R.string.gesture_data_screen),
-                        onClick = onClickDataGathering,
-                        icon = R.drawable.ic_settings_gesture
-                    ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.settings_screen_correction),
-                    onClick = onClickTextCorrection,
-                    icon = R.drawable.ic_settings_correction
-                ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.settings_screen_secondary_layouts),
-                    onClick = onClickLayouts,
-                    icon = R.drawable.ic_settings_layout
-                ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.dictionary_settings_category),
-                    onClick = onClickDictionaries,
-                    icon = R.drawable.ic_dictionary
-                ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.settings_screen_advanced),
-                    onClick = onClickAdvanced,
-                    icon = R.drawable.ic_settings_advanced
-                ) { NextScreenIcon() }
-                Preference(
-                    name = stringResource(R.string.settings_screen_about),
-                    onClick = onClickAbout,
-                    icon = R.drawable.ic_settings_about
-                ) { NextScreenIcon() }
-                // app version, below the last item
+                MenuGroup(stringResource(R.string.main_menu_group_typing)) {
+                    MenuItem(
+                        title = stringResource(R.string.language_and_layouts_title),
+                        summary = enabledSubtypes.joinToString(", ") { it.displayName() },
+                        icon = R.drawable.ic_menu_languages,
+                        onClick = onClickLanguage,
+                    )
+                    MenuItem(
+                        title = stringResource(R.string.settings_screen_correction),
+                        summary = stringResource(R.string.main_menu_correction_summary),
+                        icon = R.drawable.ic_menu_text_correction,
+                        onClick = onClickTextCorrection,
+                    )
+                    MenuItem(
+                        title = stringResource(R.string.dictionary_settings_category),
+                        summary = stringResource(R.string.main_menu_dictionaries_summary),
+                        icon = R.drawable.ic_menu_dictionaries,
+                        onClick = onClickDictionaries,
+                    )
+                    // glide typing: only if enabled in the build and a library is loaded (RcbFeatures.GLIDE_TYPING_ENABLED)
+                    if (JniUtils.sHaveGestureLib)
+                        MenuItem(
+                            title = stringResource(R.string.settings_screen_gesture),
+                            icon = R.drawable.ic_menu_gesture_typing,
+                            onClick = onClickGestureTyping,
+                        )
+                    // we don't even show the menu if data gathering phase ended more than 2 weeks ago
+                    if (showGestureData)
+                        MenuItem(
+                            title = stringResource(R.string.gesture_data_screen),
+                            icon = R.drawable.ic_menu_gesture_data,
+                            onClick = onClickDataGathering,
+                        )
+                }
+                MenuGroup(stringResource(R.string.main_menu_group_look)) {
+                    MenuItem(
+                        title = stringResource(R.string.settings_screen_appearance),
+                        summary = stringResource(R.string.main_menu_appearance_summary),
+                        icon = R.drawable.ic_menu_appearance,
+                        onClick = onClickAppearance,
+                    )
+                    MenuItem(
+                        title = stringResource(R.string.settings_screen_toolbar),
+                        summary = stringResource(R.string.main_menu_toolbar_summary),
+                        icon = R.drawable.ic_menu_toolbar,
+                        onClick = onClickToolbar,
+                    )
+                    MenuItem(
+                        title = stringResource(R.string.settings_screen_secondary_layouts),
+                        summary = stringResource(R.string.main_menu_secondary_layouts_summary),
+                        icon = R.drawable.ic_menu_secondary_layouts,
+                        onClick = onClickLayouts,
+                    )
+                }
+                MenuGroup(stringResource(R.string.main_menu_group_general)) {
+                    MenuItem(
+                        title = stringResource(R.string.settings_screen_preferences),
+                        summary = stringResource(R.string.main_menu_preferences_summary),
+                        icon = R.drawable.ic_menu_preferences,
+                        onClick = onClickPreferences,
+                    )
+                    MenuItem(
+                        title = stringResource(R.string.settings_screen_advanced),
+                        summary = stringResource(R.string.main_menu_advanced_summary),
+                        icon = R.drawable.ic_menu_advanced,
+                        onClick = onClickAdvanced,
+                    )
+                    MenuItem(
+                        title = stringResource(R.string.settings_screen_about),
+                        summary = stringResource(R.string.main_menu_about_summary),
+                        icon = R.drawable.ic_menu_about,
+                        onClick = onClickAbout,
+                    )
+                }
+                // app version, below the last group
                 Text(
                     text = stringResource(R.string.version_text, BuildConfig.VERSION_NAME),
                     style = MaterialTheme.typography.bodySmall,
@@ -150,6 +179,77 @@ fun MainSettingsScreen(
                 )
             }
         }
+    }
+}
+
+/** A titled group of menu items on a rounded card. */
+@Composable
+private fun MenuGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .padding(start = 32.dp, end = 32.dp, top = 20.dp, bottom = 8.dp)
+            .semantics { heading() }
+    )
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth()
+    ) {
+        Column(Modifier.padding(vertical = 4.dp), content = content)
+    }
+}
+
+/** One menu entry: icon in a tonal container, title and optional summary, and a chevron. At least 72 dp high. */
+@Composable
+private fun MenuItem(title: String, @DrawableRes icon: Int, onClick: () -> Unit, summary: String? = null) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp)
+            .clickable(onClick = onClick, role = Role.Button)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.secondaryContainer)
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null, // the title says what it is
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+            if (!summary.isNullOrEmpty())
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+        }
+        Spacer(Modifier.width(8.dp))
+        val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+        Icon(
+            painter = painterResource(R.drawable.ic_menu_chevron),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp).graphicsLayer {
+                // point the other way in right-to-left layouts
+                scaleX = if (rtl) -1f else 1f
+            }
+        )
     }
 }
 

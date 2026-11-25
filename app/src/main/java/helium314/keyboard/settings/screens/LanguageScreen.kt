@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.settings.screens
 
+import helium314.keyboard.latin.define.RcbFeatures
 import android.content.Context
 import android.os.Build
 import android.view.inputmethod.InputMethodSubtype
@@ -113,7 +114,7 @@ private fun SubtypeRow(subtype: InputMethodSubtype, isEnabled: Boolean) {
         Switch(
             checked = isEnabled,
             onCheckedChange = {
-                if (it && !dictsAvailable(subtype.locale(), ctx))
+                if (it && RcbFeatures.DICTIONARY_IMPORT_ENABLED && !dictsAvailable(subtype.locale(), ctx)) // the dialog offers downloads
                     showNoDictDialog = true
                 if (it) SubtypeSettings.addEnabledSubtype(ctx.prefs(), subtype)
                 else SubtypeSettings.removeEnabledSubtype(ctx, subtype)

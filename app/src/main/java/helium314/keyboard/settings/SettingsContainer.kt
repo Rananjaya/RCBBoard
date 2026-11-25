@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.JniUtils
 import helium314.keyboard.settings.screens.createAboutSettings
 import helium314.keyboard.settings.screens.createAdvancedSettings
@@ -62,10 +63,19 @@ class Setting(
 }
 
 // intentionally not putting individual debug settings in here so user knows the context
-private fun createSettings(context: Context) = createAboutSettings(context) + createAppearanceSettings(context) +
+private fun createSettings(context: Context): List<Setting> {
+    val settings = createAboutSettings(context) + createAppearanceSettings(context) +
         createCorrectionSettings(context) + createPreferencesSettings(context) + createToolbarSettings(context) +
-        createLayoutSettings(context) + createAdvancedSettings(context) +
-        if (JniUtils.sHaveGestureLib) createGestureTypingSettings(context) else emptyList()
+        createLayoutSettings(context) + createAdvancedSettings(context)
+    if (JniUtils.sHaveGestureLib) return settings + createGestureTypingSettings(context)
+    // RCBBoard: without glide typing (RcbFeatures.GLIDE_TYPING_ENABLED) its text correction settings are not
+    // registered either, so the settings search can't find them (TextCorrectionScreen already hides them)
+    return settings.filterNot { it.key in glideTypingCorrectionKeys }
+}
+
+private val glideTypingCorrectionKeys = setOf(
+    Settings.PREF_AUTOSPACE_BEFORE_GESTURE_TYPING, Settings.PREF_AUTOSPACE_AFTER_GESTURE_TYPING
+)
 
 object SettingsWithoutKey {
     const val EDIT_PERSONAL_DICTIONARY = "edit_personal_dictionary"
