@@ -49,7 +49,7 @@ class StuffReceiver(latinIME: LatinIME) {
         override fun onReceive(context: Context?, intent: Intent?) {
             Log.d(
                 TAG, "after activity closing. isEmojiSearch: ${isEmojiSearch()}. Intent: $intent" +
-                    intent?.let { ". imeClosed: ${isImeClosed(intent)}. selected emoji: ${getSelectedEmoji(intent)}" }
+                    intent?.let { ". imeClosed: ${isImeClosed(intent)}. has selected emoji: ${getSelectedEmoji(intent) != null}" } // don't log the emoji itself
             )
             if (intent == null || !shouldHandleEmojiSearchDone(intent.action, isEmojiSearch())) return
             if (isImeClosed(intent)) {
