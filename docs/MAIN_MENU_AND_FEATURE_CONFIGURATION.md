@@ -97,3 +97,23 @@ No glide typing code was deleted: the gesture detection (`PointerTracker`, `Gest
 | Unit tests (`testRunTestsUnitTest`, CI setup, JDK 25) | ✅ 410 tests, 0 failures. The first-start tests in `LanguageAllowListTest` were changed to the new defaults. |
 | Debug and release builds | ✅ build (release unsigned locally) |
 | Lint | Same 68 inherited `MissingTranslation` errors as before, no new issues |
+
+## Emoji row
+
+*Settings → Preferences → Emoji row* (`show_emoji_row`, **off by default**) adds a row of 10 emoji above the letter and symbol keys.
+
+- **Content:** the user's recently used emoji, most recent first, filled up with popular defaults (`EmojiRow.DEFAULT_EMOJIS`). Recent emoji come from the emoji palette, emoji search, emoji suggestions and emoji tapped in the row itself (`KeyboardActionListenerImpl.rememberTypedEmoji`). Nothing is remembered in incognito mode.
+- **Updating:** the row content is part of `KeyboardId`, so the keyboard is rebuilt with the new order the next time it is shown, not while typing (keys don't move under the finger).
+- **Not shown** in password fields, or on number pads, the phone pad and the emoji and clipboard views.
+- **Height:** like the number row, the row takes space from the other rows, so the keyboard keeps its height. The emoji and clipboard views count it too, so their bottom rows line up.
+- **Code:** `keyboard/emoji/EmojiRow.kt` (rules, unit-tested in `EmojiRowTest`), `KeyboardParser.createRows` (adds the row), `PreferencesScreen.kt` (setting).
+
+Verified on the Android 15 emulator: off and on in Preferences, emoji inserted by tapping (single and multi-code-point emoji such as ❤️), recent emoji moving to the front after the keyboard is reopened, symbols page, Sinhala (Singlish) layout, light and dark theme.
+
+## RCBBoard branding
+
+- APK files are named `RCBBoard_<version>-<build type>.apk`.
+- The app name, spell checker name and settings titles say RCBBoard in all languages, including transliterated forms in translations. Translation updates taken from HeliBoard can bring back the old name in `ime_settings`, `spell_checker_service_name` and `android_spell_checker_settings`: check these after each translation update.
+- About shows the RCBBoard slogan, the source code link and the licence. The licence entry opens RCBBoard's `LICENSE` and names HeliBoard, OpenBoard and the AOSP keyboard: this attribution is required by GPL-3.0 and the inherited copyright notices and must stay.
+- Links to the HeliBoard wiki and HeliBoard discussions were removed from the app (custom layouts link to RCBBoard's `layouts.md`).
+- Intentionally unchanged: copyright and licence headers, `LICENSE*`, `licenses/`, the third-party licences screen, the internal `helium314.keyboard` package, code comments with HeliBoard issue links, internal file names such as `heliboard.db` (renaming would lose user data), and the gesture data texts (they describe HeliBoard's gesture data project and are only shown with glide typing).

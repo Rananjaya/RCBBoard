@@ -14,6 +14,8 @@ import helium314.keyboard.event.HangulEventDecoder
 import helium314.keyboard.event.HapticEvent
 import helium314.keyboard.event.HardwareEventDecoder
 import helium314.keyboard.event.HardwareKeyboardEventDecoder
+import helium314.keyboard.keyboard.emoji.EmojiRow
+import helium314.keyboard.keyboard.emoji.RecentEmojis
 import helium314.keyboard.keyboard.internal.LayoutDirective
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.AudioAndHapticFeedbackManager
@@ -24,6 +26,8 @@ import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.InputPointers
 import helium314.keyboard.latin.common.WordBreakIterator
 import helium314.keyboard.latin.common.combiningRange
+import helium314.keyboard.latin.common.isEmoji
+import helium314.keyboard.latin.common.StringUtils
 import helium314.keyboard.latin.common.stepsToCharCount
 import helium314.keyboard.latin.inputlogic.InputLogic
 import helium314.keyboard.latin.settings.Settings
@@ -104,6 +108,8 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
     }
 
     override fun onCodeInput(primaryCode: Int, x: Int, y: Int, isKeyRepeat: Boolean) {
+        if (primaryCode > 0 && StringUtils.mightBeEmoji(primaryCode)) // cheap check first, this runs for every key
+            rememberTypedEmoji(StringUtils.newSingleCodePointString(primaryCode))
         when (primaryCode) {
             KeyCode.TOGGLE_AUTOCORRECT -> return settings.toggleAutoCorrect()
             KeyCode.TOGGLE_INCOGNITO_MODE -> {
@@ -152,7 +158,14 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         metaAfterCodeInput(primaryCode)
     }
 
-    override fun onTextInput(text: String?) = latinIME.onTextInput(text)
+    override fun onTextInput(text: String?) {
+        rememberTypedEmoji(text)
+        latinIME.onTextInput(text)
+    }
+
+    /** RCBBoard: emoji typed with keys, e.g. from the emoji row, become recently used emoji (see EmojiRow) */
+    private fun rememberTypedEmoji(text: String?) =
+        EmojiRow.recordTyped(text, settings.current.mIncognitoModeEnabled, ::isEmoji, RecentEmojis::add)
 
     override fun onContent(content: InputContentInfoCompat) {
         val editorInfo = latinIME.currentInputEditorInfo

@@ -5,6 +5,8 @@
  */
 package helium314.keyboard.keyboard
 
+import helium314.keyboard.keyboard.emoji.EmojiRow
+import helium314.keyboard.keyboard.emoji.RecentEmojis
 import android.text.InputType
 import android.text.TextUtils
 import android.view.inputmethod.EditorInfo
@@ -37,7 +39,9 @@ data class KeyboardId(
     val isSplitLayout: Boolean,
     val oneHandedModeEnabled: Boolean,
     val internalAction: KeyboardLayoutSet.InternalAction?,
-    val emojiSearchAvailable: Boolean
+    val emojiSearchAvailable: Boolean,
+    /** RCBBoard: emoji of the emoji row, null if it's not shown. Part of the id, so the cache notices new recent emoji. */
+    val emojiRowKeys: List<String>?,
 ) {
     lateinit var editorInfo: EditorInfo // we don't want it in the data class constructor
 
@@ -62,6 +66,7 @@ data class KeyboardId(
         params.settingsValues?.mOneHandedModeEnabled ?: false,
         params.internalAction,
         params.emojiSearchAvailable,
+        EmojiRow.keysFor(params.settingsValues?.mShowsEmojiRow ?: false, params.editorInfo.inputType) { RecentEmojis.get() },
     ) {
         editorInfo = params.editorInfo
     }
