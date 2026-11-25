@@ -15,6 +15,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import helium314.keyboard.latin.define.RcbFeatures
 import helium314.keyboard.dictionarypack.DictionaryPackConstants
 import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.keyboard.emoji.SupportedEmojis
@@ -192,13 +193,13 @@ private fun restoreLauncher(onError: (String) -> Unit): ManagedActivityResultLau
                         while (entry != null) {
                             if (entry.name.startsWith("unprotected${File.separator}")) {
                                 val adjustedName = entry.name.substringAfter("unprotected${File.separator}")
-                                if (backupFilePatterns.any { adjustedName.matches(it) }) {
+                                if (restoreFilePatterns.any { adjustedName.matches(it) }) {
                                     if (!restoreEntryToDir(zip, deviceProtectedFilesDir, adjustedName)) {
                                         Log.w("AdvancedScreen", "skipping unsafe backup entry $adjustedName")
                                     }
                                 }
                                 anyMatch = true
-                            } else if (backupFilePatterns.any { entry.name.matches(it) }) {
+                            } else if (restoreFilePatterns.any { entry.name.matches(it) }) {
                                 if (!restoreEntryToDir(zip, filesDir, entry.name)) {
                                     Log.w("AdvancedScreen", "skipping unsafe backup entry ${entry.name}")
                                 }
@@ -393,10 +394,18 @@ internal class RestoreDirectories(dirs: List<File>) {
 private const val PREFS_FILE_NAME = "preferences.json"
 private const val PROTECTED_PREFS_FILE_NAME = "protected_preferences.json"
 
+/** dictionaries the user added from files */
+private val userDictionaryFilePattern = "dicts${File.separator}.*${File.separator}.*user\\.dict".toRegex()
+
+/** RCBBoard: without dictionary import (RcbFeatures), dictionaries added to a backup are not restored */
+private val restoreFilePatterns by lazy {
+    if (RcbFeatures.DICTIONARY_IMPORT_ENABLED) backupFilePatterns else backupFilePatterns - userDictionaryFilePattern
+}
+
 private val backupFilePatterns by lazy { listOf(
     "blacklists${File.separator}.*\\.txt".toRegex(),
     "layouts${File.separator}.*${LayoutUtilsCustom.CUSTOM_LAYOUT_PREFIX}+\\..{0,4}".toRegex(), // can't expect a period at the end, as this would break restoring older backups
-    "dicts${File.separator}.*${File.separator}.*user\\.dict".toRegex(),
+    userDictionaryFilePattern,
     "UserHistoryDictionary.*${File.separator}UserHistoryDictionary.*\\.(body|header)".toRegex(),
     "custom_background_image.*".toRegex(),
     "custom_font".toRegex(),

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.settings.dialogs
 
+import helium314.keyboard.latin.define.RcbFeatures
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -23,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -85,7 +87,8 @@ fun DictionaryDialog(
                     )
                     addonDicts.forEach { DictionaryDetails(it) }
                 }
-                val dictString = createDictionaryTextAnnotated(locale)
+                // links for downloading more dictionaries, only if dictionary import is enabled (RcbFeatures)
+                val dictString = if (RcbFeatures.DICTIONARY_IMPORT_ENABLED) createDictionaryTextAnnotated(locale) else AnnotatedString("")
                 if (dictString.isNotEmpty()) {
                     HorizontalDivider()
                     Text(stringResource(R.string.dictionary_available),
@@ -97,7 +100,7 @@ fun DictionaryDialog(
             }
         },
         scrollContent = true,
-        neutralButtonText = stringResource(R.string.add_new_dictionary_title),
+        neutralButtonText = if (RcbFeatures.DICTIONARY_IMPORT_ENABLED) stringResource(R.string.add_new_dictionary_title) else null,
         onNeutral = {
             val intent = IntentUtils.getResolvableTypeIntent(ctx, "*/*")
                 .setAction(Intent.ACTION_OPEN_DOCUMENT)

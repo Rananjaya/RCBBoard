@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import helium314.keyboard.latin.define.RcbFeatures
 import helium314.keyboard.compat.locale
 import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.keyboard.internal.KeyboardIconsSet
@@ -69,6 +70,9 @@ open class SettingsActivity : ComponentActivity(), SharedPreferences.OnSharedPre
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // RCBBoard: without dictionary import, ignore .dict files sent by other apps (ACTION_VIEW, see below)
+        if (!RcbFeatures.DICTIONARY_IMPORT_ENABLED && intent?.action == Intent.ACTION_VIEW)
+            intent = null
         if (Settings.getValues() == null) {
             val inputAttributes = InputAttributes(EditorInfo(), false, packageName)
             Settings.getInstance().loadSettings(this, resources.configuration.locale(), inputAttributes)
