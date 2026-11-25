@@ -242,7 +242,8 @@ public final class KeyboardSwitcher {
         // @see #getVisibleKeyboardView() and
         // @see LatinIME#onComputeInset(android.inputmethodservice.InputMethodService.Insets)
         mMainKeyboardFrame.setVisibility(visibility);
-        mKeyboardViewWrapper.setVisibility(Settings.getInstance().readShowToolbarOnly() ? View.GONE : View.VISIBLE);
+        mKeyboardViewWrapper.setVisibility(Settings.getInstance().readShowToolbarOnly() && toggleState == KeyboardSwitchState.OTHER
+                ? View.GONE : View.VISIBLE);
         mEmojiPalettesView.setVisibility(View.GONE);
         mEmojiPalettesView.stopEmojiPalettes();
         mEmojiTabStripView.setVisibility(View.GONE);
@@ -281,7 +282,8 @@ public final class KeyboardSwitcher {
         boolean hidden = !isShowingEmojiPalettes() && !isShowingClipboardHistory()
                 && (mKeyboardLayoutSet == null
                 || mKeyboardView == null
-                || !mKeyboardView.isShown());
+                || !mKeyboardView.isShown())
+                && (mStripContainer == null || !mStripContainer.isShown());
         if (hidden) {
             return KeyboardSwitchState.HIDDEN;
         } else if (isShowingEmojiPalettes()) {
@@ -298,8 +300,10 @@ public final class KeyboardSwitcher {
         KeyboardSwitchState currentState = getKeyboardSwitchState();
         Log.w(TAG, "onToggleKeyboard() : Current = " + currentState + " : Toggle = " + toggleState);
         if (currentState == toggleState) {
-            mLatinIME.stopShowingInputView();
-            mLatinIME.hideWindow();
+            if (!Settings.getInstance().readShowToolbarOnly()) {
+                mLatinIME.stopShowingInputView();
+                mLatinIME.hideWindow();
+            }
             resetKeyboardStateToAlphabet();
         } else {
             mLatinIME.startShowingInputView(true);
@@ -639,6 +643,7 @@ public final class KeyboardSwitcher {
             if (DEBUG_ACTION) {
                 Log.d(TAG, "setEmojiKeyboard");
             }
+            mKeyboardViewWrapper.setVisibility(View.VISIBLE);
             mMainKeyboardFrame.setVisibility(View.VISIBLE);
             // The visibility of {@link #mKeyboardView} must be aligned with {@link #MainKeyboardFrame}.
             // @see #getVisibleKeyboardView() and
@@ -659,6 +664,7 @@ public final class KeyboardSwitcher {
             if (DEBUG_ACTION) {
                 Log.d(TAG, "setClipboardKeyboard");
             }
+            mKeyboardViewWrapper.setVisibility(View.VISIBLE);
             mMainKeyboardFrame.setVisibility(View.VISIBLE);
             // The visibility of {@link #mKeyboardView} must be aligned with {@link #MainKeyboardFrame}.
             // @see #getVisibleKeyboardView() and
