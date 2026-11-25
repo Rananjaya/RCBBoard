@@ -108,6 +108,14 @@ class PackageIdTest(unittest.TestCase):
         self.assertIn(f"  APP_PACKAGE: {PRODUCTION_PACKAGE}\n", text)
         self.assertIn('--package "$APP_PACKAGE"', step(text, "Sign and verify APK"))
 
+    def test_release_build_disables_glide_typing(self):
+        # Production releases never include glide typing, whatever the build file default or environment says.
+        build = step(read("release.yml"), "Build universal release APK")
+        self.assertIn("-PrcbboardGlideTyping=false", build)
+        self.assertNotIn("-PrcbboardGlideTyping=true", read("release.yml"))
+        with open(APP_BUILD_FILE, encoding="utf-8") as f:
+            self.assertIn('gradleProperty("rcbboardGlideTyping").orNull?.toBoolean() ?: false', f.read())
+
     def test_debug_workflows_sign_and_check_the_debug_package(self):
         for name in ("development.yml", "qa.yml"):
             text = read(name)

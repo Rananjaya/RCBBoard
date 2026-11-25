@@ -201,6 +201,7 @@ jobs:
         run: >-
           ./gradlew --no-daemon :app:assembleRelease
           -PrcbboardVersionCode="$VERSION_CODE" -PrcbboardVersionName="$VERSION"
+          -PrcbboardGlideTyping=false
 
       - name: Locate the unsigned APK
         id: outputs
