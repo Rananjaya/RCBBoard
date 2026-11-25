@@ -77,7 +77,7 @@ fun MainSettingsScreen(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_brand_mark),
+                    painter = painterResource(R.drawable.ic_launcher_rcb_full),
                     contentDescription = null,
                     modifier = Modifier.size(28.dp),
                     tint = Color.Unspecified,
