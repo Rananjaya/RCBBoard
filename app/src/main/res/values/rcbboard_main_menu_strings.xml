@@ -13,4 +13,8 @@
     <string name="main_menu_dictionaries_summary">Dictionaries of the bundled languages</string>
     <string name="main_menu_advanced_summary">Backup and restore, and more options</string>
     <string name="main_menu_about_summary">Version, licences and source code</string>
+    <!-- About > Open-source licence: the licence, and the projects RCBBoard is based on (required attribution) -->
+    <string name="about_license_attribution">GNU General Public License v3.0. RCBBoard is based on HeliBoard, OpenBoard and the Android Open Source Project keyboard.</string>
+    <!-- Colours > Load -->
+    <string name="load_colors_message">Choose a colour theme file that you saved before.</string>
 </resources>

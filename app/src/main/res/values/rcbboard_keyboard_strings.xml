@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- RCBBoard: keyboard settings added by RCBBoard. Translations are welcome. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="emoji_row">Emoji row</string>
+    <string name="emoji_row_summary">Show your recent emoji above the keys (not in password fields)</string>
+</resources>

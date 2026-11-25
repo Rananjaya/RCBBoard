@@ -44,8 +44,8 @@ RCBBoard is a personal project by [Rananjaya](https://github.com/Rananjaya), mad
 - **Custom layouts**: edit the main keyboard [layouts](layouts.md) (when *use system languages* is turned off) and special layouts such as symbols, numbers and the functional keys.
 - **Clipboard history**, one-handed mode, split keyboard and a number pad.
 - **Backup and restore** of settings and learned words / history.
-- **More dictionaries** can be added: build your own, or get them from the [dictionaries repository](https://codeberg.org/Helium314/aosp-dictionaries#dictionaries) (quality may vary).
-- **Glide typing** needs a closed-source library that is **not included in RCBBoard**, because no compatible open-source library exists. Without it, glide typing is unavailable. If you want it, you have to add the library yourself: it can be extracted from GApps packages ("*swypelibs*"), or downloaded [here](https://github.com/erkserkserks/openboard/tree/46fdf2b550035ca69299ce312fa158e7ade36967/app/src/main/jniLibs) (click on the file and then "raw" or the download button).
+- **Emoji row**: off by default; turn it on in *Settings → Preferences → Emoji row*. It shows your 10 most recently used emoji above the letter and symbol keys (filled up with popular ones until you have used enough), updates the next time the keyboard opens, and is hidden in password fields. Emoji used in incognito mode are not remembered.
+- **Glide typing** is disabled in the standard build. There is no user setting to enable it.
 
 The [HeliBoard wiki](https://github.com/HeliBorg/HeliBoard/wiki) explains these features in detail, including the [FAQ](https://github.com/HeliBorg/HeliBoard/wiki/FAQ) and [hidden features](https://github.com/HeliBorg/HeliBoard/wiki/9.-Hidden-features).
 
@@ -64,6 +64,10 @@ RCBBoard is set up for **English (US)**, **English (UK)** and **Sinhala**. You c
 **Typing in Wijesekara.** Type in Unicode order: the consonant first, then the vowel sign. For example, ක then ා gives කා, and ක then ෙ gives කෙ. Characters that a PC keyboard reaches with AltGr (such as independent vowels and two-part vowel signs) are on long-press. See the [Wijesekara layout notes](docs/sinhala-wijesekara-layout.md) for the full key map and sources.
 
 The Sinhala dictionary and the emoji dictionaries are bundled with their sources and licences documented in [`third_party/`](third_party/) and [`licenses/`](licenses/).
+
+## First launch
+
+The seven-page setup tutorial explains how to enable RCBBoard in Android keyboard settings, select it as the current keyboard, try English and Sinhala (Singlish), switch languages, explore the main features and choose a theme. You can skip the tutorial and replay it from Settings at any time. Android requires users to enable and select keyboards themselves.
 
 ## Privacy and security
 
@@ -97,7 +101,7 @@ Themes, layouts and dictionaries made for HeliBoard usually work in RCBBoard too
 
 - **Themes** can be saved and loaded from the menu in the *adjust colours* screen. Collections: [Star-Trowa/heliboard-themes](https://github.com/Star-Trowa/heliboard-themes) and [PickleHik3/droid-tings](https://github.com/PickleHik3/droid-tings); custom colours are shared in [HeliBoard's discussions](https://github.com/HeliBorg/HeliBoard/discussions/categories/custom-colors).
 - **Layouts** are text files you can edit, copy and share (see [layouts.md](layouts.md)). Custom layouts are shared in [HeliBoard's discussions](https://github.com/HeliBorg/HeliBoard/discussions/categories/custom-layout).
-- **Dictionaries** are built from a wordlist in [this format](https://codeberg.org/Helium314/aosp-dictionaries/src/branch/main/wordlists/sample.combined) (see [wordlist information](https://codeberg.org/Helium314/aosp-dictionaries#wordlist-information)), compiled with [external tools](https://github.com/remi0s/aosp-dictionary-tools), and can be shared or added to the [dictionaries repository](https://codeberg.org/Helium314/aosp-dictionaries/). A wordlist can also be loaded directly in the app.
+- **Dictionaries** shared by the HeliBoard community are resources for developers and other compatible keyboards. The standard RCBBoard app does not provide an interface for importing dictionary files.
 - **HeliBoard community:** [GitHub discussions](https://github.com/HeliBorg/HeliBoard/discussions), [Lemmy](https://lemmy.world/c/Heliboard) and [Reddit](https://www.reddit.com/r/HeliBoard), where these resources are shared.
 
 Other related projects: [k3lp](https://codeberg.org/k3lp/k3lp), a WIP library for keyboard layout parsing (created by [FlorisBoard](https://github.com/florisboard/florisboard/) maintainers), and [swipe-o-scope](https://codeberg.org/eclexic/swipe-o-scope) for visualising gesture data.

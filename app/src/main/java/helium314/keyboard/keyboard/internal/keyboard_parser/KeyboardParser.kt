@@ -66,7 +66,7 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
         if (params.mId.element.isBottomRow) {
             heightRescale = 4f
             // to have same height as alpha keyboard we act as if we had the default number of rows
-            val virtualRows = if (Settings.getValues().mShowsNumberRow) 5 else 4 // determine from Settings, because it's not actually in params for bottom rows
+            val virtualRows = 4 + (if (Settings.getValues().mShowsNumberRow) 1 else 0) + (if (Settings.getValues().mShowsEmojiRow) 1 else 0) // determine from Settings, because it's not actually in params for bottom rows
             // params rescale is not perfect, especially mTopPadding may cause 1 pixel offsets because it's already been converted to int once
             params.mOccupiedHeight /= virtualRows
             params.mBaseHeight /= virtualRows
@@ -108,6 +108,14 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
             val newLabelFlags = defaultLabelFlags or
                     if (Settings.getValues().mShowNumberRowHints) 0 else Key.LABEL_FLAGS_DISABLE_HINT_LABEL
             baseKeys.add(0, numberRow.mapTo(mutableListOf()) { it.copy(newLabelFlags = newLabelFlags) })
+        }
+        // RCBBoard: emoji row on top (above the number row), see EmojiRow
+        val emojiRowKeys = params.mId.emojiRowKeys
+        if (element.isAlphaOrSymbol && emojiRowKeys != null) {
+            // all emoji at letter size: emoji with more than one code point (e.g. ❤️) would otherwise use the smaller label size
+            val emojiLabelFlags = (defaultLabelFlags and Key.LABEL_FLAGS_FOLLOW_KEY_LABEL_RATIO.inv()) or
+                Key.LABEL_FLAGS_FOLLOW_KEY_LETTER_RATIO or Key.LABEL_FLAGS_DISABLE_HINT_LABEL
+            baseKeys.add(0, emojiRowKeys.mapTo(mutableListOf()) { TextKeyData(label = it, labelFlags = emojiLabelFlags) })
         }
         if (!params.mAllowRedundantPopupKeys)
             params.baseKeys = baseKeys.flatMap { row -> row.map { it.toKeyParams(params) } }

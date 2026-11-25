@@ -9,9 +9,9 @@ object Links {
     const val GITHUB = "https://github.com/HeliBorg/HeliBoard"
     const val SOURCE_CODE = "https://github.com/Rananjaya/RCBBoard/tree/develop"
     const val DEVELOPER = "https://github.com/Rananjaya"
-    const val LICENSE = "$GITHUB/blob/main/LICENSE"
+    const val LICENSE = "https://github.com/Rananjaya/RCBBoard/blob/develop/LICENSE"
     const val WIKI_URL = "$GITHUB/wiki"
-    const val LAYOUT_WIKI_URL = "$WIKI_URL/2.-Layouts"
+    const val LAYOUT_WIKI_URL = "https://github.com/Rananjaya/RCBBoard/blob/develop/layouts.md" // RCBBoard's own copy of the layout documentation
     const val CUSTOM_LAYOUTS = "$GITHUB/discussions/categories/custom-layout"
     const val CUSTOM_COLORS = "$GITHUB/discussions/categories/custom-colors"
     const val GESTURE_DATA_VIDEO_PEERTUBE = "https://makertube.net/w/cQECfDkuLGR9eUQquUEo4K"
