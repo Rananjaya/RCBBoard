@@ -13,6 +13,7 @@ import android.text.TextUtils;
 
 import helium314.keyboard.latin.App;
 import helium314.keyboard.latin.BuildConfig;
+import helium314.keyboard.latin.define.RcbFeatures;
 import helium314.keyboard.latin.settings.Settings;
 
 import java.io.File;
@@ -63,7 +64,8 @@ public final class JniUtils {
         } catch (Exception e) {
             userSuppliedLibrary = null;
         }
-        if (!BuildConfig.BUILD_TYPE.equals("nouserlib") && userSuppliedLibrary != null) {
+        // RCBBoard: a user-supplied (glide typing) library is only loaded if glide typing is enabled in the build
+        if (RcbFeatures.isGestureLibraryLoadingEnabled() && userSuppliedLibrary != null) {
             String wantedChecksum = expectedDefaultChecksum();
             try {
                 if (app != null) {
@@ -91,7 +93,7 @@ public final class JniUtils {
             }
         }
 
-        if (!sHaveGestureLib) {
+        if (!sHaveGestureLib && RcbFeatures.GLIDE_TYPING_ENABLED) {
             // try loading google library, will fail unless the library is in system and this is a system app
             try {
                 System.loadLibrary(JNI_LIB_NAME_GOOGLE);
