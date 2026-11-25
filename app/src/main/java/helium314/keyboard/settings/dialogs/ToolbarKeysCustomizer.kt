@@ -37,7 +37,7 @@ import helium314.keyboard.latin.utils.Theme
 import helium314.keyboard.settings.initPreview
 import helium314.keyboard.latin.utils.previewDark
 import androidx.core.content.edit
-import helium314.keyboard.settings.GetIconOrEmpty
+import helium314.keyboard.settings.GetToolbarIconOrEmpty
 
 @Composable
 fun ToolbarKeysCustomizer(
@@ -65,7 +65,7 @@ fun ToolbarKeysCustomizer(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.clickable { showKeyCustomizer = it }.fillParentMaxWidth()
                     ) {
-                        KeyboardIconsSet.instance.GetIconOrEmpty(it.name)
+                        KeyboardIconsSet.instance.GetToolbarIconOrEmpty(it.name)
                         Text(it.name.lowercase().getStringResourceOrName("", ctx))
                     }
                 }
