@@ -17,6 +17,9 @@ import java.util.Locale
 class KeyboardIconsSet private constructor() {
     var iconIds = emptyMap<String, Int>()
         private set
+    /** Icons for the toolbar (RCBBoard): the toolbar has its own icon set, user-customized icons take precedence */
+    var toolbarIconIds = emptyMap<String, Int>()
+        private set
     private val iconsByName = HashMap<String, Drawable>(80)
 
     fun loadIcons(context: Context) {
@@ -31,6 +34,7 @@ class KeyboardIconsSet private constructor() {
         val ids = if (overrideIds.isEmpty()) defaultIds else defaultIds + overrideIds
         if (!needsReload && ids == iconIds) return
         iconIds = ids
+        toolbarIconIds = if (overrideIds.isEmpty()) toolbarIcons else toolbarIcons + overrideIds
         iconsByName.clear()
         ids.forEach { (name, id) ->
             try {
@@ -51,6 +55,12 @@ class KeyboardIconsSet private constructor() {
     /** gets drawable from resources, with mutate (might be necessary to avoid coloring issues...) */
     fun getNewDrawable(name: String?, context: Context): Drawable? = name?.lowercase(Locale.US)?.let { name ->
         (iconIds[name] ?: iconIds[alternativeNames[name]])?.let { ContextCompat.getDrawable(context, it)?.mutate() }
+    }
+
+    /** like [getNewDrawable], but for icons shown in the toolbar (toolbar keys, toolbar expand key, clipboard suggestion) */
+    fun getNewToolbarDrawable(name: String?, context: Context): Drawable? = name?.lowercase(Locale.US)?.let { name ->
+        (toolbarIconIds[name] ?: toolbarIconIds[alternativeNames[name]])?.let { ContextCompat.getDrawable(context, it)?.mutate() }
+            ?: getNewDrawable(name, context)
     }
 
     companion object {
@@ -288,6 +298,48 @@ class KeyboardIconsSet private constructor() {
                 })
             }
         } }
+
+        // RCBBoard: the toolbar uses Material Symbols (Rounded) for all icon styles, see res/drawable/ic_toolbar_*.xml
+        // Keyboard keys that share an icon name with a toolbar key (e.g. emoji or clipboard key) keep their style icons.
+        private val toolbarIcons by lazy {
+            ToolbarKey.entries.associateTo(hashMapOf(NAME_TOOLBAR_KEY to R.drawable.ic_toolbar_expand)) {
+                it.name.lowercase(Locale.US) to when (it) {
+                    ToolbarKey.VOICE -> R.drawable.ic_toolbar_voice
+                    ToolbarKey.CLIPBOARD -> R.drawable.ic_toolbar_clipboard
+                    ToolbarKey.NUMPAD -> R.drawable.ic_toolbar_numpad
+                    ToolbarKey.DPAD -> R.drawable.ic_toolbar_dpad
+                    ToolbarKey.UNDO -> R.drawable.ic_toolbar_undo
+                    ToolbarKey.REDO -> R.drawable.ic_toolbar_redo
+                    ToolbarKey.SETTINGS -> R.drawable.ic_toolbar_settings
+                    ToolbarKey.SELECT_ALL -> R.drawable.ic_toolbar_select_all
+                    ToolbarKey.SELECT_WORD -> R.drawable.ic_toolbar_select_word
+                    ToolbarKey.COPY -> R.drawable.ic_toolbar_copy
+                    ToolbarKey.CUT -> R.drawable.ic_toolbar_cut
+                    ToolbarKey.PASTE -> R.drawable.ic_toolbar_paste
+                    ToolbarKey.ONE_HANDED -> R.drawable.ic_toolbar_one_handed
+                    ToolbarKey.FLOATING -> R.drawable.ic_toolbar_floating
+                    ToolbarKey.SPLIT -> R.drawable.ic_toolbar_split
+                    ToolbarKey.INCOGNITO -> R.drawable.ic_toolbar_incognito
+                    ToolbarKey.AUTOCORRECT -> R.drawable.ic_toolbar_autocorrect
+                    ToolbarKey.CLEAR_CLIPBOARD -> R.drawable.ic_toolbar_clear_clipboard
+                    ToolbarKey.CLOSE_HISTORY -> R.drawable.ic_toolbar_close_history
+                    ToolbarKey.EMOJI -> R.drawable.ic_toolbar_emoji
+                    ToolbarKey.LEFT -> R.drawable.ic_toolbar_left
+                    ToolbarKey.RIGHT -> R.drawable.ic_toolbar_right
+                    ToolbarKey.UP -> R.drawable.ic_toolbar_up
+                    ToolbarKey.DOWN -> R.drawable.ic_toolbar_down
+                    ToolbarKey.WORD_LEFT -> R.drawable.ic_toolbar_word_left
+                    ToolbarKey.WORD_RIGHT -> R.drawable.ic_toolbar_word_right
+                    ToolbarKey.PAGE_UP -> R.drawable.ic_toolbar_page_up
+                    ToolbarKey.PAGE_DOWN -> R.drawable.ic_toolbar_page_down
+                    ToolbarKey.FULL_LEFT -> R.drawable.ic_toolbar_full_left
+                    ToolbarKey.FULL_RIGHT -> R.drawable.ic_toolbar_full_right
+                    ToolbarKey.PAGE_START -> R.drawable.ic_toolbar_page_start
+                    ToolbarKey.PAGE_END -> R.drawable.ic_toolbar_page_end
+                    ToolbarKey.BACKGROUND_GATHERING -> R.drawable.ic_toolbar_background_gathering
+                }
+            }
+        }
 
         fun getAllIcons(context: Context): Map<String, List<Int>> {
             // currently active style first
