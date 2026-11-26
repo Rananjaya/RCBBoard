@@ -9,10 +9,10 @@
 #
 # dry_run is ticked by default: a run only publishes when dry_run is explicitly unticked.
 # A dry run has the same gates, approval, build, production signing and verification, but no
-# tag, no GitHub Release (not even a draft) and no APK or App Bundle upload; only
-# SHA256SUMS.txt and the release notes are kept as a workflow artifact. Also builds when there
-# are no app changes (as the next patch version), so the whole pipeline can be tested without
-# publishing anything.
+# tag or GitHub Release. Signed APK/AAB candidates and checksums are retained as a restricted,
+# 14-day Actions artifact for emulator validation; the R8 mapping is retained separately for
+# 90 days. Also builds when there are no app changes (as the next patch version), so the whole
+# pipeline can be tested without publishing anything.
 name: Release
 run-name: ${{ inputs.dry_run && 'Release dry run' || 'Release' }} ${{ inputs.commit }}
 
@@ -259,6 +259,14 @@ jobs:
           --version-name "$VERSION"
           --min-sdk "$MIN_SDK"
 
+      - name: Inspect optimized R8 mapping and DEX
+        run: >-
+          python3 .github/scripts/check_r8_mapping.py
+          --mapping app/build/outputs/mapping/release/mapping.txt
+          --apk "$RUNNER_TEMP/dist/RCBBoard-$VERSION.apk"
+          --dexdump "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/dexdump"
+          --github-summary "$GITHUB_STEP_SUMMARY"
+
       - name: Remove keystore
         if: always()
         run: rm -f "$RUNNER_TEMP/rcbboard-release.keystore"
@@ -290,24 +298,36 @@ jobs:
           Check with \`apksigner verify --print-certs RCBBoard-$VERSION.apk\` and \`keytool -printcert -jarfile RCBBoard-$VERSION.aab\`. The file checksums are in \`SHA256SUMS.txt\`.
           EOF
           if [ "$DRY_RUN" = "true" ]; then
-            { echo "> **Dry run:** built, signed and verified for testing only. Not tagged, not published; the APK and App Bundle were not kept."
+            { echo "> **Dry run:** built, signed and verified for testing. Not tagged or published. The APK and App Bundle are in a restricted Actions artifact for 14 days."
               echo
               cat "$RUNNER_TEMP/release-notes.md"; } > "$RUNNER_TEMP/release-notes.tmp"
             mv "$RUNNER_TEMP/release-notes.tmp" "$RUNNER_TEMP/release-notes.md"
           fi
           cat "$RUNNER_TEMP/release-notes.md"
 
-      # Dry run only: keep the checksum and the notes, never the production-signed APK.
-      - name: Upload dry-run results (checksum and release notes, no APK)
+      # Dry-run binaries are private Actions artifacts for candidate testing, never public releases.
+      - name: Upload signed dry-run candidate (APK, AAB, checksum and notes)
         if: inputs.dry_run
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: release-dry-run-${{ env.VERSION }}-run${{ github.run_number }}
+          name: release-candidate-${{ env.VERSION }}-run${{ github.run_number }}
           path: |
+            ${{ runner.temp }}/dist/RCBBoard-${{ env.VERSION }}.apk
+            ${{ runner.temp }}/dist/RCBBoard-${{ env.VERSION }}.aab
             ${{ runner.temp }}/dist/SHA256SUMS.txt
             ${{ runner.temp }}/release-notes.md
           if-no-files-found: error
           retention-days: 14
+
+      # The mapping can deobfuscate stack traces. Keep it out of public release assets and
+      # restrict access to repository collaborators through Actions artifact permissions.
+      - name: Upload R8 mapping (restricted Actions artifact)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: r8-mapping-${{ env.VERSION }}-run${{ github.run_number }}
+          path: app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Dry-run summary
         if: inputs.dry_run
@@ -324,7 +344,8 @@ jobs:
             echo "| **APK SHA-256** | \`$(grep '\.apk$' "$RUNNER_TEMP/dist/SHA256SUMS.txt" | cut -d' ' -f1)\` |"
             echo "| **App Bundle SHA-256** | \`$(grep '\.aab$' "$RUNNER_TEMP/dist/SHA256SUMS.txt" | cut -d' ' -f1)\` |"
             echo "| **Tag / GitHub Release** | not created |"
-            echo "| **Artifact** | SHA256SUMS.txt and release-notes.md only (the APK and App Bundle are not uploaded) |"
+            echo "| **Artifact** | Signed APK, AAB, SHA256SUMS.txt and release notes in restricted Actions storage for 14 days |"
+            echo "| **R8 mapping** | Restricted Actions artifact for 90 days; not a public release asset |"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create tag ${{ env.TAG }}

@@ -1,0 +1,2 @@
+Recent emoji are no longer saved in incognito mode.
+Added an in-app privacy policy with details about local data and Android backups.

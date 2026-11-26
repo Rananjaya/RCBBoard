@@ -1,30 +1,18 @@
-HeliBoard is a privacy-conscious open-source keyboard, based on AOSP / OpenBoard.
-Does not use Internet permission, and thus is 100% offline.
+RCBBoard is a free, open-source keyboard for English and Sinhala. It includes English (US and UK), Sinhala, Sinhala Wijesekara and Sinhala Singlish input.
+
+Your typing stays on your device. RCBBoard has no internet permission, adverts, analytics or tracking.
 
 Features:
 <ul>
-  <li>Add dictionaries for suggestions and spell check</li>
-  <ul>
-    <li>build your own, or get them  <a href="https://codeberg.org/Helium314/aosp-dictionaries#dictionaries">here</a>, or in the <a href="https://codeberg.org/Helium314/aosp-dictionaries#experimental-dictionaries">experimental</a> section (quality may vary)</li>
-    <li>additional dictionaries for emojis or scientific symbols can be used to provide suggestions (similar to "emoji search")</li>
-    <li>note that for Korean layouts, suggestions only work using <a href="https://github.com/openboard-team/openboard/commit/83fca9533c03b9fecc009fc632577226bbd6301f">this dictionary</a>, the tools in the dictionary repository are not able to create working dictionaries</li>
-  </ul>
-  <li>Customize keyboard themes (style, colors and background image)</li>
-  <ul>
-    <li>can follow the system's day/night setting on Android 10+ (and on some versions of Android 9)</li>
-    <li>can follow dynamic colours for Android 12+</li>
-  </ul>
-  <li>Customise keyboard <a href="https://github.com/HeliBorg/HeliBoard/blob/main/layouts.md">layouts</a> (only available when disabling <i>use system languages</i>)</li>
-  <li>Customise special layouts, like symbols, number,  or functional key layout</li>
-  <li>Multilingual typing</li>
-  <li>Glide typing (<i>only with closed source library</i> ☹️)</li>
-  <ul>
-    <li>library not included in the app, as there is no compatible open source library available</li>
-    <li>can be extracted from GApps packages ("<i>swypelibs</i>"), or downloaded <a href="https://github.com/erkserkserks/openboard/tree/46fdf2b550035ca69299ce312fa158e7ade36967/app/src/main/jniLibs">here</a> (click on the file and then "raw" or the tiny download button)</li>
-  </ul>
-  <li>Clipboard history</li>
-  <li>One-handed mode</li>
-  <li>Split keyboard (only available if the screen is large enough)</li>
-  <li>Number pad</li>
-  <li>Backup and restore your settings and learned word / history data</li>
+  <li>English and Sinhala typing, suggestions and autocorrection</li>
+  <li>Switch between enabled languages from the keyboard</li>
+  <li>Optional emoji row with recently used emoji</li>
+  <li>Clipboard history with controls to clear or disable it</li>
+  <li>Personalised suggestions that learn on your device and can be turned off</li>
+  <li>Customisable themes, colours, key layouts and toolbar</li>
+  <li>One-handed mode, split keyboard and number pad</li>
+  <li>First-run setup tutorial with a replay option in Settings</li>
+  <li>Backup and restore for settings and personal data</li>
 </ul>
+
+Contact suggestions are optional and require permission.
