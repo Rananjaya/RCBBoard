@@ -223,7 +223,8 @@ jobs:
       - name: Download bundletool ${{ env.BUNDLETOOL_VERSION }}
         run: |
           set -euo pipefail
-          curl -fsSL --retry 3 -o "$RUNNER_TEMP/bundletool.jar" \
+          # --retry-all-errors: also retry dropped connections; the checksum below still decides
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o "$RUNNER_TEMP/bundletool.jar" \
             "https://github.com/google/bundletool/releases/download/$BUNDLETOOL_VERSION/bundletool-all-$BUNDLETOOL_VERSION.jar"
           echo "$BUNDLETOOL_SHA256  $RUNNER_TEMP/bundletool.jar" | sha256sum -c -
 
