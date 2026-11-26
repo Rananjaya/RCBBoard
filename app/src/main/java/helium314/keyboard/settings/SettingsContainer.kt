@@ -84,6 +84,7 @@ object SettingsWithoutKey {
     const val DEVELOPER = "developer"
     const val THIRD_PARTY = "third_party"
     const val LICENSE = "license"
+    const val PRIVACY_POLICY = "privacy_policy"
     const val HIDDEN_FEATURES = "hidden_features"
     const val GITHUB = "github"
     const val GITHUB_WIKI = "github_wiki"

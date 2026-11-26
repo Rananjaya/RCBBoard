@@ -19,6 +19,8 @@ object RecentEmojis {
     @JvmStatic
     fun add(emoji: String) {
         if (emoji.isEmpty()) return
+        // RCBBoard: incognito mode (forced, or requested by the input field) does not remember used emoji either
+        if (Settings.getValues()?.mIncognitoModeEnabled == true) return
         val recents = get()
         recents.removeAll { it == emoji }
         recents.add(0, emoji)
