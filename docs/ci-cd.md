@@ -84,10 +84,10 @@ The release workflow:
    - its jobs **Verify commit** and **QA APK** succeeded (not skipped), and **QA APK** confirmed that it checked out exactly this SHA.
 2. **Determines the version** of exactly that commit (see [Versioning](#versioning)). If only documentation, CI or tests changed since the last release, nothing is published. If the newest tag has no published release, it stops with recovery steps (see [Recovering a failed release](#recovering-a-failed-release)).
 3. **Waits for approval** in the `release` environment.
-4. **Builds** the universal release APK from exactly that commit (`:app:assembleRelease`, all four ABIs, no Gradle cache).
-5. **Signs** it with the existing production key from the `release` environment secrets and **verifies** it: v1 and v2 signatures, exactly one signer whose certificate SHA-256 is `0b01373116d4a7b57646c4c7e2ffc28af91870bdbeabb4b8c05c00f313e2291b`, package `com.rananjaya.rcbboard`, version, minSdk 21, all four ABIs.
+4. **Builds** the universal release APK and the App Bundle for Google Play from exactly that commit (`:app:assembleRelease :app:bundleRelease`, all four ABIs, glide typing off, no Gradle cache).
+5. **Signs** it with the existing production key from the `release` environment secrets and **verifies** it: v1 and v2 signatures, exactly one signer whose certificate SHA-256 is `0b01373116d4a7b57646c4c7e2ffc28af91870bdbeabb4b8c05c00f313e2291b`, package `com.rananjaya.rcbboard`, version, minSdk 21, all four ABIs. The App Bundle is signed with the same key (`jarsigner`) and checked the same way: `jarsigner -verify`, exactly that certificate (`keytool -printcert -jarfile`), `bundletool validate` (bundletool pinned by version and SHA-256), package, version and all four ABIs.
 6. **Tags** exactly that commit as `rcbboard-vX.Y.Z`.
-7. **Publishes** a GitHub Release with `RCBBoard-X.Y.Z.apk` and `SHA256SUMS.txt`. The notes list the version, commit, QA run, build date, installation steps and the certificate fingerprint (no commit messages). It is marked *latest* only if no newer release is published.
+7. **Publishes** a GitHub Release with `RCBBoard-X.Y.Z.apk`, `RCBBoard-X.Y.Z.aab` (for uploading to Google Play by hand; it cannot be installed directly) and `SHA256SUMS.txt`. The notes list the version, commit, QA run, build date, installation steps and the certificate fingerprint (no commit messages). It is marked *latest* only if no newer release is published.
 
 Safety:
 
@@ -107,13 +107,13 @@ To test the whole production pipeline without publishing anything, start the rel
 | Commit checks (on `develop`, successful QA run, not older than the latest release) | yes | yes, the same |
 | Approval in the `release` environment | yes | yes, the same |
 | Version | from the commits (nothing published if only docs/CI/tests changed) | the same; if there are no app changes, the next patch version is built anyway |
-| Release APK built from the exact commit, signed with the production key and verified | yes | yes, the same |
+| Release APK and App Bundle built from the exact commit, signed with the production key and verified | yes | yes, the same |
 | Release notes and `SHA256SUMS.txt` | yes | yes (notes marked as a dry run) |
 | Git tag | created | **not created** |
-| GitHub Release | published with the APK | **none, not even a draft** |
-| What is kept | the release | **only** `SHA256SUMS.txt` and `release-notes.md` as a workflow artifact (14 days); the production-signed APK is **not** uploaded |
+| GitHub Release | published with the APK and App Bundle | **none, not even a draft** |
+| What is kept | the release | **only** `SHA256SUMS.txt` and `release-notes.md` as a workflow artifact (14 days); the production-signed APK and App Bundle are **not** uploaded |
 
-A dry run changes no tags, releases or versions, so the next real release is not affected. `SHA256SUMS.txt` records the checksum of the APK that the dry run built and signed.
+A dry run changes no tags, releases or versions, so the next real release is not affected. `SHA256SUMS.txt` records the checksums of the APK and App Bundle that the dry run built and signed.
 
 ## The same commit in every stage
 

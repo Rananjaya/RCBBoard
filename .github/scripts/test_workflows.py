@@ -193,6 +193,25 @@ class ReleaseTest(unittest.TestCase):
         self.assertEqual(len(uploads), 1)
         self.assertGreater(uploads[0], self.text.index("- name: Create GitHub Release"))
 
+    def test_app_bundle_is_built_signed_and_only_published_in_the_release(self):
+        build = step(self.text, "Build universal release APK")
+        self.assertIn(":app:bundleRelease", build)
+        self.assertIn("-PrcbboardGlideTyping=false", build)
+        # bundletool is pinned by version and checksum
+        self.assertRegex(self.text, r'\n  BUNDLETOOL_VERSION: "\d+\.\d+\.\d+"\n')
+        self.assertRegex(self.text, r"\n  BUNDLETOOL_SHA256: [0-9a-f]{64}\n")
+        self.assertIn('sha256sum -c -', step(self.text, "Download bundletool"))
+        # the bundle goes through the same signing script and certificate check as the APK
+        s = step(self.text, "Sign and verify APK")
+        for part in ('--aab "$UNSIGNED_AAB"', '--bundletool "$RUNNER_TEMP/bundletool.jar"',
+                     '--expected-cert-sha256 "$EXPECTED_CERT_SHA256"'):
+            self.assertIn(part, s)
+        # never in the dry-run artifact; only uploaded to the GitHub Release
+        self.assertNotIn(".aab", step(self.text, "Upload dry-run results"))
+        uploads = [m.start() for m in re.finditer(r"RCBBoard-\$VERSION\.aab\"", self.text)]
+        self.assertEqual(len(uploads), 1)
+        self.assertGreater(uploads[0], self.text.index("- name: Create GitHub Release"))
+
     def test_signing_and_certificate_check_unchanged(self):
         self.assertIn(f"EXPECTED_CERT_SHA256: {RELEASE_CERT_SHA256}\n", self.text)
         s = step(self.text, "Sign and verify APK")
