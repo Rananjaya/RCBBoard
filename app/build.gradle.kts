@@ -54,8 +54,10 @@ android {
         minSdk = 21
         targetSdk = 37
         // The release workflow passes -PrcbboardVersionCode / -PrcbboardVersionName (see docs/ci-cd.md).
-        versionCode = providers.gradleProperty("rcbboardVersionCode").orNull?.toInt() ?: 4300
-        versionName = providers.gradleProperty("rcbboardVersionName").orNull ?: "4.3-beta1"
+        // Keep local release builds aligned with the current production candidate.
+        // The release workflow still supplies both properties explicitly.
+        versionCode = providers.gradleProperty("rcbboardVersionCode").orNull?.toInt() ?: 50101
+        versionName = providers.gradleProperty("rcbboardVersionName").orNull ?: "5.1.1"
         // RCBBoard: glide typing is off by default (see RcbFeatures.GLIDE_TYPING_ENABLED and
         // docs/MAIN_MENU_AND_FEATURE_CONFIGURATION.md). Developers: change the default here or build with
         // -PrcbboardGlideTyping=true. It can't be changed in the app.
@@ -71,13 +73,13 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
-            isShrinkResources = false
+            isShrinkResources = true
             isDebuggable = false
             isJniDebuggable = false
         }
         create("nouserlib") { // same as release, but does not allow the user to provide a library
             isMinifyEnabled = true
-            isShrinkResources = false
+            isShrinkResources = true
             isDebuggable = false
             isJniDebuggable = false
         }

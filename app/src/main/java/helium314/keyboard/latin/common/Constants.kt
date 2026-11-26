@@ -8,7 +8,7 @@ object Links {
     const val DICTIONARY_EMOJI_CLDR_SUFFIX = "emoji_cldr_signal_dictionaries/"
     const val GITHUB = "https://github.com/HeliBorg/HeliBoard"
     const val SOURCE_CODE = "https://github.com/Rananjaya/RCBBoard/tree/develop"
-    const val PRIVACY_POLICY = "https://github.com/Rananjaya/RCBBoard/blob/develop/PRIVACY_POLICY.md"
+    const val PRIVACY_POLICY = "https://github.com/Rananjaya/RCBBoard/blob/1a9c2dce6dafd5d75b8ed0f75db96ade34aa519d/PRIVACY_POLICY.md"
     const val DEVELOPER = "https://github.com/Rananjaya"
     const val LICENSE = "https://github.com/Rananjaya/RCBBoard/blob/develop/LICENSE"
     const val WIKI_URL = "$GITHUB/wiki"

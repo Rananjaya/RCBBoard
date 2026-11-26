@@ -111,9 +111,9 @@ To test the whole production pipeline without publishing anything, start the rel
 | Release notes and `SHA256SUMS.txt` | yes | yes (notes marked as a dry run) |
 | Git tag | created | **not created** |
 | GitHub Release | published with the APK and App Bundle | **none, not even a draft** |
-| What is kept | the release | **only** `SHA256SUMS.txt` and `release-notes.md` as a workflow artifact (14 days); the production-signed APK and App Bundle are **not** uploaded |
+| What is kept | the release | signed APK, AAB, `SHA256SUMS.txt` and release notes in a restricted Actions artifact (14 days); R8 mapping in a separate restricted artifact (90 days) |
 
-A dry run changes no tags, releases or versions, so the next real release is not affected. `SHA256SUMS.txt` records the checksums of the APK and App Bundle that the dry run built and signed.
+A dry run changes no tags, releases or versions, so the next real release is not affected. Download the candidate APK from the run artifact for emulator testing. The candidate APK and AAB are production-signed but are only available to users who can access this repository's Actions artifacts; they are not public release assets. `SHA256SUMS.txt` records both checksums. The R8 mapping is retained separately in Actions storage and is not included in public release assets.
 
 ## The same commit in every stage
 
@@ -190,7 +190,7 @@ With squash merges, the pull request title becomes the commit message, so give p
 
 **versionCode** = MAJOR × 10000 + MINOR × 100 + PATCH, for example 4.4.0 → 40400. MINOR and PATCH must stay below 100. Development and QA builds use the minutes since 1970 instead, so a later debug build always has a higher versionCode; the debug app is a separate app, so this never affects the production app.
 
-`app/build.gradle.kts` keeps `4300` / `4.3-beta1` as defaults for local builds; the workflows pass `-PrcbboardVersionCode` and `-PrcbboardVersionName`.
+`app/build.gradle.kts` keeps `50101` / `5.1.1` as local defaults; the production workflow still passes `-PrcbboardVersionCode` and `-PrcbboardVersionName` explicitly.
 
 ## One-time setup on GitHub
 

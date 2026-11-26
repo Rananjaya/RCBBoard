@@ -183,15 +183,25 @@ class ReleaseTest(unittest.TestCase):
             self.assertIn("if: ${{ !inputs.dry_run }}", s, name)
             self.assertIn('[ "$DRY_RUN" = "false" ] || {', s, name)
 
-    def test_dry_run_never_uploads_the_apk(self):
-        s = step(self.text, "Upload dry-run results")
+    def test_dry_run_keeps_signed_candidate_only_as_private_artifact(self):
+        s = step(self.text, "Upload signed dry-run candidate")
         self.assertIn("if: inputs.dry_run", s)
-        self.assertNotIn(".apk", s)
+        self.assertIn("RCBBoard-${{ env.VERSION }}.apk", s)
+        self.assertIn("RCBBoard-${{ env.VERSION }}.aab", s)
         self.assertIn("SHA256SUMS.txt", s)
-        # the only places the production APK leaves the runner: the GitHub Release
-        uploads = [m.start() for m in re.finditer(r"RCBBoard-\$VERSION\.apk\"", self.text)]
-        self.assertEqual(len(uploads), 1)
-        self.assertGreater(uploads[0], self.text.index("- name: Create GitHub Release"))
+        self.assertIn("retention-days: 14", s)
+        public_release = step(self.text, "Create GitHub Release")
+        self.assertIn('"$RUNNER_TEMP/dist/RCBBoard-$VERSION.apk"', public_release)
+
+    def test_r8_mapping_is_inspected_and_kept_in_restricted_storage(self):
+        inspect = step(self.text, "Inspect optimized R8 mapping")
+        self.assertIn("check_r8_mapping.py", inspect)
+        self.assertIn("mapping.txt", inspect)
+        self.assertIn("--apk", inspect)
+        mapping = step(self.text, "Upload R8 mapping")
+        self.assertIn("if-no-files-found: error", mapping)
+        self.assertIn("retention-days: 90", mapping)
+        self.assertNotIn("mapping.txt", step(self.text, "Create GitHub Release"))
 
     def test_app_bundle_is_built_signed_and_only_published_in_the_release(self):
         build = step(self.text, "Build universal release APK")
@@ -206,11 +216,11 @@ class ReleaseTest(unittest.TestCase):
         for part in ('--aab "$UNSIGNED_AAB"', '--bundletool "$RUNNER_TEMP/bundletool.jar"',
                      '--expected-cert-sha256 "$EXPECTED_CERT_SHA256"'):
             self.assertIn(part, s)
-        # never in the dry-run artifact; only uploaded to the GitHub Release
-        self.assertNotIn(".aab", step(self.text, "Upload dry-run results"))
-        uploads = [m.start() for m in re.finditer(r"RCBBoard-\$VERSION\.aab\"", self.text)]
-        self.assertEqual(len(uploads), 1)
-        self.assertGreater(uploads[0], self.text.index("- name: Create GitHub Release"))
+        # It is retained privately for candidate validation and published only after testing.
+        self.assertIn("RCBBoard-${{ env.VERSION }}.aab",
+                      step(self.text, "Upload signed dry-run candidate"))
+        public_release = step(self.text, "Create GitHub Release")
+        self.assertIn('"$RUNNER_TEMP/dist/RCBBoard-$VERSION.aab"', public_release)
 
     def test_signing_and_certificate_check_unchanged(self):
         self.assertIn(f"EXPECTED_CERT_SHA256: {RELEASE_CERT_SHA256}\n", self.text)

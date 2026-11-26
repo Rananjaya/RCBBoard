@@ -91,6 +91,8 @@ LOCAL_CLANG := true
 LOCAL_SDK_VERSION := 14
 LOCAL_NDK_STL_VARIANT := c++_static
 LOCAL_LDFLAGS += -ldl
+# Explicitly align every ABI's ELF segments for Android devices using 16 KB pages.
+LOCAL_LDFLAGS += -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384
 
 # Avoid issues with reproducible builds, see https://gitlab.com/fdroid/rfp/-/issues/2662
 LOCAL_LDFLAGS += -Wl,--build-id=none
