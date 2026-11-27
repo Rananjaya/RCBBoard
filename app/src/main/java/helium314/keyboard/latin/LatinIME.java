@@ -46,6 +46,7 @@ import helium314.keyboard.event.InputTransaction;
 import helium314.keyboard.keyboard.Keyboard;
 import helium314.keyboard.keyboard.KeyboardId;
 import helium314.keyboard.keyboard.KeyboardLayoutSet;
+import helium314.keyboard.keyboard.FretPredictions;
 import helium314.keyboard.keyboard.KeyboardSwitcher;
 import helium314.keyboard.keyboard.MainKeyboardView;
 import helium314.keyboard.latin.common.ColorType;
@@ -499,6 +500,11 @@ public class LatinIME extends InputMethodService implements
     public void onCreate() {
         mSettings.startListener();
         KeyboardIconsSet.Companion.getInstance().loadIcons(this);
+        // RCBBoard: a word flicked up from the Fret keyboard is picked like a word tapped in the suggestion strip
+        FretPredictions.setAcceptor(info -> {
+            pickSuggestionManually(info);
+            return kotlin.Unit.INSTANCE;
+        });
         mRichImm = RichInputMethodManager.getInstance();
         AudioAndHapticFeedbackManager.init(this);
         AccessibilityUtils.init(this);
@@ -641,6 +647,8 @@ public class LatinIME extends InputMethodService implements
 
     @Override
     public void onDestroy() {
+        FretPredictions.setAcceptor(null);
+        FretPredictions.clear();
         mClipboardHistoryManager.onDestroy();
         mDictionaryFacilitator.closeDictionaries();
         mSettings.onDestroy();
@@ -734,6 +742,7 @@ public class LatinIME extends InputMethodService implements
 
     @Override
     public void onFinishInputView(final boolean finishingInput) {
+        FretPredictions.clear();
         StatsUtils.onFinishInputView();
         mHandler.onFinishInputView(finishingInput);
         mStatsUtilsManager.onFinishInputView();
@@ -1240,7 +1249,8 @@ public class LatinIME extends InputMethodService implements
     @RequiresApi(api = Build.VERSION_CODES.R)
     public InlineSuggestionsRequest onCreateInlineSuggestionsRequest(@NonNull Bundle uiExtras) {
         Log.d(TAG,"onCreateInlineSuggestionsRequest called");
-        if (Settings.getValues().mSuggestionStripHiddenPerUserSettings) {
+        // without a strip, the app shows autofill suggestions itself
+        if (Settings.getValues().mSuggestionStripHiddenPerUserSettings || fretHidesSuggestionStrip()) {
             return null;
         }
 
@@ -1251,7 +1261,7 @@ public class LatinIME extends InputMethodService implements
     @RequiresApi(api = Build.VERSION_CODES.R)
     public boolean onInlineSuggestionsResponse(InlineSuggestionsResponse response) {
         Log.d(TAG,"onInlineSuggestionsResponse called");
-        if (Settings.getValues().mSuggestionStripHiddenPerUserSettings) {
+        if (Settings.getValues().mSuggestionStripHiddenPerUserSettings || fretHidesSuggestionStrip()) {
             return false;
         }
 
@@ -1420,6 +1430,10 @@ public class LatinIME extends InputMethodService implements
     private void setSuggestedWords(final SuggestedWords suggestedWords) {
         final SettingsValues currentSettingsValues = mSettings.getCurrent();
         mInputLogic.setSuggestedWords(suggestedWords);
+        // RCBBoard: BlackBerry 10 style predictions on the Fret keyboard, from the same suggestions as the strip
+        FretPredictions.update(currentSettingsValues.mSuggestionsEnabled ? suggestedWords : null,
+                currentSettingsValues.mFretPredictionMode);
+        if (fretHidesSuggestionStrip()) return; // the words are on the keys, the strip is not shown
         // TODO: Modify this when we support suggestions with hard keyboard
         if (!hasSuggestionStripView()) {
             return;
@@ -1493,6 +1507,11 @@ public class LatinIME extends InputMethodService implements
         return false;
     }
 
+    /** RCBBoard: the Fret style shows predicted words on the keys and no suggestion strip, see FretPredictions */
+    private boolean fretHidesSuggestionStrip() {
+        return FretPredictions.hidesSuggestionStrip(mSettings.getCurrent().mFretPredictionMode);
+    }
+
     // This will first try showing a clipboard suggestion. On success, the toolbar will be hidden
     // if the "Auto hide toolbar" is enabled. Otherwise, an empty suggestion strip (if prediction
     // is enabled) or punctuation suggestions (if it's disabled) will be set.
@@ -1500,6 +1519,7 @@ public class LatinIME extends InputMethodService implements
     // and there is a selection of text or it's the start of a line.
     @Override
     public void setNeutralSuggestionStrip() {
+        FretPredictions.clear();
         final SettingsValues currentSettings = mSettings.getCurrent();
         if (tryShowClipboardSuggestion()) {
             // clipboard suggestion has been set

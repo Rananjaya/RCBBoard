@@ -40,7 +40,9 @@
     <!-- BB10 keys run edge to edge: no gaps between key cells, frets and tile gaps are drawn by FretBackgroundDrawable and FretKeyDrawable -->
     <fraction name="rcb_classic_key_horizontal_gap">0%p</fraction>
     <fraction name="rcb_classic_key_vertical_gap">0%p</fraction>
-    <fraction name="rcb_classic_keyboard_top_padding">0%p</fraction>
+    <!-- black band above the top fret (6 / 117 of the row pitch, like the gaps between the rows), so the top fret
+         stands out from the app above like the other frets; ResourceUtils adds it to the keyboard height -->
+    <fraction name="rcb_classic_keyboard_top_padding">1.27%p</fraction>
     <fraction name="rcb_classic_keyboard_bottom_padding">0%p</fraction>
 
     <!-- Default 4-row keyboard height relative to the keyboard width in portrait, measured on the BlackBerry Z30

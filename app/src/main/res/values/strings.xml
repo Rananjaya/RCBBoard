@@ -713,6 +713,16 @@ New dictionary:
     <string name="user_dict_add_word_button">Add a word</string>
     <!-- Option for choosing theme style -->
     <string name="theme_style">Style</string>
+    <!-- Setting of the Fret keyboard style: where predicted words appear on the keyboard, like BlackBerry 10 -->
+    <string name="fret_predictions">Word predictions on the keyboard</string>
+    <!-- Description of the word prediction setting of the Fret keyboard style -->
+    <string name="fret_predictions_summary">Flick up to insert a predicted word</string>
+    <!-- Word prediction option: each word above the key of its next letter -->
+    <string name="fret_predictions_in_letter">In-Letter, above the next letter</string>
+    <!-- Word prediction option: words in three columns above the keyboard -->
+    <string name="fret_predictions_in_column">In-Column, above the keyboard</string>
+    <!-- Word prediction option: no predictions on the keyboard -->
+    <string name="fret_predictions_off">Off</string>
     <!-- Option for choosing icon style (same options as theme_style) -->
     <string name="icon_style">Icon style</string>
     <!-- Style name for Rounded style -->

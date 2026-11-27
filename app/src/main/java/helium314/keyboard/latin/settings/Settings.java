@@ -55,6 +55,8 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
 
     // theme-related stuff
     public static final String PREF_THEME_STYLE = "theme_style";
+    /** RCBBoard: BlackBerry 10 style word predictions of the Fret (RCB Classic) style: in_letter, in_column or off */
+    public static final String PREF_FRET_PREDICTIONS = "fret_predictions";
     public static final String PREF_ICON_STYLE = "icon_style";
     public static final String PREF_ACCENT_SHIFTED_ICON = "accent_shifted_icon";
     public static final String PREF_THEME_COLORS = "theme_colors";

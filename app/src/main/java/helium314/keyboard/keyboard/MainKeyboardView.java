@@ -54,6 +54,7 @@ import helium314.keyboard.latin.define.DebugFlags;
 import helium314.keyboard.latin.settings.DebugSettings;
 import helium314.keyboard.latin.settings.Defaults;
 import helium314.keyboard.latin.settings.Settings;
+import helium314.keyboard.latin.suggestions.SuggestedWordInfo;
 import helium314.keyboard.latin.suggestions.SuggestedWords;
 import helium314.keyboard.latin.utils.KtxKt;
 import helium314.keyboard.latin.utils.LanguageOnSpacebarUtils;
@@ -464,15 +465,45 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
                 isGestureHandlingEnabledByUser && isGestureFloatingPreviewTextEnabled);
     }
 
+    /** RCBBoard: redraws and animates the BlackBerry 10 style predicted words of the Fret style */
+    private final FretPredictions.Listener mFretPredictionsChanged = new FretPredictions.Listener() {
+        @Override
+        public void onPredictionsChanged() {
+            postInvalidate();
+        }
+
+        @Override
+        public void onPredictionAccepted(@NonNull final SuggestedWordInfo word) {
+            if (!isShown()) return;
+            final FretPredictionRenderer.Snapshot snapshot = takeFretPredictionSnapshot(word.getWord());
+            if (snapshot == null) return;
+            // on the preview layer, so the word can fly out of the keyboard towards the text field
+            locatePreviewPlacerView();
+            if (mFretFlyUpView == null) mFretFlyUpView = new FretFlyUpView(getContext());
+            if (mFretFlyUpView.getParent() != mDrawingPreviewPlacerView) {
+                if (mFretFlyUpView.getParent() instanceof ViewGroup vg) vg.removeView(mFretFlyUpView);
+                mDrawingPreviewPlacerView.addView(mFretFlyUpView, new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            }
+            mFretFlyUpView.start(snapshot, CoordinateUtils.x(mOriginCoords), CoordinateUtils.y(mOriginCoords));
+        }
+    };
+    @Nullable
+    private FretFlyUpView mFretFlyUpView;
+
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         installPreviewPlacerView();
+        // RCBBoard: redraw when the BlackBerry 10 style predicted words of the Fret style change
+        // (other styles never get predicted words, see SettingsValues.mFretPredictionMode)
+        FretPredictions.addListener(mFretPredictionsChanged);
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        FretPredictions.removeListener(mFretPredictionsChanged);
         mDrawingPreviewPlacerView.removeAllViews();
     }
 
