@@ -127,6 +127,8 @@ public class SettingsValues {
     public final boolean mUseAppsDictionary;
     public final boolean mCustomNavBarColor;
     public final float mKeyboardHeightScale;
+    /** RCBBoard: RCB Classic style has its own BlackBerry 10 inspired default keyboard height */
+    public final boolean mIsRcbClassicStyle;
     public final float mBottomRowScale;
     public final boolean mUrlDetectionEnabled;
     public final float mBottomPaddingScale;
@@ -296,6 +298,7 @@ public class SettingsValues {
         mFloatingWidth = SettingsKt.readFloatingWidth(context);
         mFloatingHeight = mIsFloatingKeyboard ? SettingsKt.readFloatingHeight(context) : 0;
         mKeyboardHeightScale = mIsFloatingKeyboard ? 1f : Settings.readHeightScale(prefs, isLandscape, isFolded);
+        mIsRcbClassicStyle = KeyboardTheme.STYLE_RCB_CLASSIC.equals(prefs.getString(Settings.PREF_THEME_STYLE, Defaults.PREF_THEME_STYLE));
         mOneHandedModeEnabled = !mIsFloatingKeyboard && Settings.readOneHandedModeEnabled(prefs, isLandscape, mIsSplitKeyboardEnabled, isFolded);
         mOneHandedModeGravity = Settings.readOneHandedModeGravity(prefs, isLandscape, mIsSplitKeyboardEnabled, isFolded);
         if (mOneHandedModeEnabled) {

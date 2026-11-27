@@ -20,6 +20,7 @@ import helium314.keyboard.latin.common.ColorType
 import helium314.keyboard.latin.common.Colors
 import helium314.keyboard.latin.common.DefaultColors
 import helium314.keyboard.latin.common.DynamicColors
+import helium314.keyboard.latin.common.RcbClassicColors
 import helium314.keyboard.latin.settings.Defaults
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.ResourceUtils
@@ -47,6 +48,8 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
         const val STYLE_MATERIAL = "Material"
         const val STYLE_HOLO = "Holo"
         const val STYLE_ROUNDED = "Rounded"
+        /** RCBBoard: BlackBerry 10 inspired style with fixed colors, see [helium314.keyboard.latin.common.RcbClassicColors] */
+        const val STYLE_RCB_CLASSIC = "RCBClassic"
 
         // new themes that are just colors
         const val THEME_LIGHT = "light"
@@ -82,7 +85,7 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
             if (!isNight) THEME_SAND else null,
             THEME_VIOLETTE
         )
-        val STYLES = arrayOf(STYLE_MATERIAL, STYLE_HOLO, STYLE_ROUNDED)
+        val STYLES = arrayOf(STYLE_MATERIAL, STYLE_HOLO, STYLE_ROUNDED, STYLE_RCB_CLASSIC)
 
         // These should be aligned with Keyboard.themeId and Keyboard.Case.keyboardTheme
         // attributes' values in attrs.xml.
@@ -91,6 +94,7 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
         private const val THEME_ID_LXX_BASE_BORDER = 2
         private const val THEME_ID_ROUNDED_BASE = 3
         private const val THEME_ID_ROUNDED_BASE_BORDER = 4
+        private const val THEME_ID_RCB_CLASSIC = 5
         private const val DEFAULT_THEME_ID = THEME_ID_LXX_BASE
 
         private val KEYBOARD_THEMES = arrayOf(
@@ -98,7 +102,8 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
             KeyboardTheme(THEME_ID_LXX_BASE, R.style.KeyboardTheme_LXX_Base),
             KeyboardTheme(THEME_ID_LXX_BASE_BORDER, R.style.KeyboardTheme_LXX_Base_Border),
             KeyboardTheme(THEME_ID_ROUNDED_BASE, R.style.KeyboardTheme_Rounded_Base),
-            KeyboardTheme(THEME_ID_ROUNDED_BASE_BORDER, R.style.KeyboardTheme_Rounded_Base_Border)
+            KeyboardTheme(THEME_ID_ROUNDED_BASE_BORDER, R.style.KeyboardTheme_Rounded_Base_Border),
+            KeyboardTheme(THEME_ID_RCB_CLASSIC, R.style.KeyboardTheme_RcbClassic)
         )
 
         // named colors, with names from old settings
@@ -120,6 +125,7 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
             val borders = prefs.getBoolean(Settings.PREF_THEME_KEY_BORDERS, Defaults.PREF_THEME_KEY_BORDERS)
             val matchingId = when (style) {
                 STYLE_HOLO -> THEME_ID_HOLO_BASE
+                STYLE_RCB_CLASSIC -> THEME_ID_RCB_CLASSIC // key borders are part of the style
                 STYLE_ROUNDED -> if (borders) THEME_ID_ROUNDED_BASE_BORDER else THEME_ID_ROUNDED_BASE
                 else -> if (borders) THEME_ID_LXX_BASE_BORDER else THEME_ID_LXX_BASE
             }
@@ -140,6 +146,9 @@ private constructor(val themeId: Int, @JvmField val mStyleId: Int) {
             else
                 prefs.getString(Settings.PREF_THEME_COLORS, Defaults.PREF_THEME_COLORS)
             val themeStyle = prefs.getString(Settings.PREF_THEME_STYLE, Defaults.PREF_THEME_STYLE)
+            // RCB Classic has fixed colors: they are part of the BlackBerry 10 look, and the key drawables are not tinted
+            if (themeStyle == STYLE_RCB_CLASSIC)
+                return RcbClassicColors(context)
 
             return getThemeColors(themeName!!, themeStyle!!, context, prefs, isNight)
         }

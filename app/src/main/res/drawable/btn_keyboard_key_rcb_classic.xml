@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fret (RCB Classic) letter key tile for emoji keys, clipboard items and other secondary views.
+     The main keyboard draws its tiles in BlackBerry Z30 proportions with FretKeyDrawable instead.
+     Original artwork. SPDX-License-Identifier: GPL-3.0-only -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <inset android:insetLeft="1.5dp" android:insetTop="1.5dp" android:insetRight="1.5dp" android:insetBottom="1.5dp">
+            <shape>
+                <corners android:radius="@dimen/rcb_classic_key_radius" />
+                <gradient android:angle="270" android:startColor="@color/rcb_classic_key_pressed_top" android:centerColor="@color/rcb_classic_key_pressed_center" android:endColor="@color/rcb_classic_key_pressed_bottom" />
+                <stroke android:width="@dimen/rcb_classic_key_rim_width" android:color="@color/rcb_classic_key_pressed_rim" />
+            </shape>
+        </inset>
+    </item>
+    <item>
+        <inset android:insetLeft="1.5dp" android:insetTop="1.5dp" android:insetRight="1.5dp" android:insetBottom="1.5dp">
+            <shape>
+                <corners android:radius="@dimen/rcb_classic_key_radius" />
+                <gradient android:angle="270" android:centerY="0.1" android:startColor="@color/rcb_classic_key_top" android:centerColor="@color/rcb_classic_key_center" android:endColor="@color/rcb_classic_key_bottom" />
+                <stroke android:width="@dimen/rcb_classic_key_rim_width" android:color="@color/rcb_classic_key_rim" />
+            </shape>
+        </inset>
+    </item>
+</selector>

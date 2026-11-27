@@ -72,13 +72,27 @@ public final class ResourceUtils {
         if (settingsValues.mIsFloatingKeyboard) {
             return settingsValues.mFloatingHeight;
         }
-        int defaultKeyboardHeight = getDefaultKeyboardHeight(res, settingsValues.mShowsNumberRow);
+        int defaultKeyboardHeight = getDefaultKeyboardHeight(res, settingsValues.mShowsNumberRow, settingsValues.mIsRcbClassicStyle);
         return (int)(defaultKeyboardHeight * settingsValues.mKeyboardHeightScale);
     }
 
     public static int getDefaultKeyboardHeight(final Resources res, final boolean showsNumberRow) {
+        return getDefaultKeyboardHeight(res, showsNumberRow, false);
+    }
+
+    public static int getDefaultKeyboardHeight(final Resources res, final boolean showsNumberRow, final boolean rcbClassicStyle) {
         final DisplayMetrics dm = res.getDisplayMetrics();
-        final float keyboardHeight = res.getDimension(R.dimen.config_default_keyboard_height) * (showsNumberRow ? 1.33f : 1f);
+        final float keyboardHeight;
+        if (rcbClassicStyle && isRcbClassicProportionalHeight(res)) {
+            // RCBBoard: BlackBerry Z30 proportions, 4 rows are 0.653 of the screen width (468 / 717 px on the reference),
+            // an extra row keeps the same row height. Still limited by min / max height below.
+            final TypedValue ratio = new TypedValue();
+            res.getValue(R.dimen.rcb_classic_keyboard_height_to_width, ratio, true);
+            final float fourRows = dm.widthPixels * ratio.getFloat();
+            keyboardHeight = fourRows * (showsNumberRow ? 1.25f : 1f);
+        } else {
+            keyboardHeight = res.getDimension(R.dimen.config_default_keyboard_height) * (showsNumberRow ? 1.33f : 1f);
+        }
         final float maxKeyboardHeight = res.getFraction(
                 R.fraction.config_max_keyboard_height, dm.heightPixels, dm.heightPixels);
         float minKeyboardHeight = res.getFraction(
@@ -92,6 +106,12 @@ public final class ResourceUtils {
         // Keyboard height will not exceed maxKeyboardHeight and will not be less than
         // minKeyboardHeight.
         return (int)Math.max(Math.min(keyboardHeight, maxKeyboardHeight), minKeyboardHeight);
+    }
+
+    /** proportional height only on phones in portrait, like the BlackBerry 10 phones it is modelled on */
+    private static boolean isRcbClassicProportionalHeight(final Resources res) {
+        final Configuration conf = res.getConfiguration();
+        return conf.orientation != Configuration.ORIENTATION_LANDSCAPE && conf.smallestScreenWidthDp < 600;
     }
 
     public static boolean isValidFraction(final float fraction) {

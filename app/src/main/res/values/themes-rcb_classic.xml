@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    RCBBoard "RCB Classic": BlackBerry 10 inspired style built on the Holo style structure.
+    Colors are fixed (see RcbClassicColors), key drawables are not tinted.
+    SPDX-License-Identifier: GPL-3.0-only
+-->
+<resources>
+    <style name="KeyboardTheme.RcbClassic" parent="Keyboard">
+        <item name="keyboardStyle">@style/Keyboard.RcbClassic</item>
+        <item name="keyboardViewStyle">@style/KeyboardView.RcbClassic</item>
+        <item name="mainKeyboardViewStyle">@style/MainKeyboardView.RcbClassic</item>
+        <item name="emojiPalettesViewStyle">@style/EmojiPalettesView.RcbClassic</item>
+        <item name="clipboardHistoryViewStyle">@style/ClipboardHistoryView.RcbClassic</item>
+        <item name="popupKeysKeyboardStyle">@style/PopupKeysKeyboard.RcbClassic</item>
+        <item name="popupKeysKeyboardViewStyle">@style/PopupKeysKeyboardView.RcbClassic</item>
+        <item name="popupKeysKeyboardViewForActionStyle">@style/PopupKeysKeyboardView.RcbClassic</item>
+        <item name="suggestionStripViewStyle">@style/SuggestionStripView.RcbClassic</item>
+        <item name="suggestionWordStyle">@style/SuggestionWord.RcbClassic</item>
+    </style>
+    <style name="Keyboard.RcbClassic" parent="Keyboard">
+        <!-- This should be aligned with KeyboardTheme.THEME_ID_* -->
+        <item name="themeId">RcbClassic</item>
+        <item name="horizontalGap">@fraction/rcb_classic_key_horizontal_gap</item>
+        <item name="verticalGap">@fraction/rcb_classic_key_vertical_gap</item>
+        <item name="keyboardTopPadding">@fraction/rcb_classic_keyboard_top_padding</item>
+        <item name="keyboardBottomPadding">@fraction/rcb_classic_keyboard_bottom_padding</item>
+    </style>
+    <style name="KeyboardView.RcbClassic" parent="KeyboardView">
+        <item name="keyTypeface">bold</item>
+        <item name="keyLetterSize">@fraction/rcb_classic_key_letter_ratio</item>
+        <item name="keyLabelSize">@fraction/rcb_classic_key_label_ratio</item>
+        <item name="keyHintLetterRatio">@fraction/rcb_classic_key_hint_letter_ratio</item>
+        <item name="keyShiftedLetterHintRatio">@fraction/rcb_classic_key_shifted_letter_hint_ratio</item>
+        <item name="keyLargeLetterRatio">@fraction/rcb_classic_key_large_letter_ratio</item>
+        <item name="keyLabelOffCenterRatio">-175%</item>
+        <item name="keyHintLabelRatio">@fraction/rcb_classic_key_hint_label_ratio</item>
+        <item name="keyHintLabelOffCenterRatio">200%</item>
+        <!-- U+2026: "…" HORIZONTAL ELLIPSIS -->
+        <item name="keyPopupHintLetter">&#x2026;</item>
+
+        <item name="android:background">@color/rcb_classic_background</item>
+        <item name="keyBackground">@drawable/btn_keyboard_key_rcb_classic</item>
+        <item name="functionalKeyBackground">@drawable/btn_keyboard_key_functional_rcb_classic</item>
+        <item name="spacebarBackground">@drawable/btn_keyboard_key_functional_rcb_classic</item>
+        <item name="spacebarNoBorderBackground">@drawable/btn_keyboard_key_functional_rcb_classic</item>
+        <item name="keyTextInactivatedColor">@color/rcb_classic_hint_text</item>
+        <item name="keyShiftedLetterHintInactivatedColor">@color/rcb_classic_hint_text</item>
+        <item name="keyShiftedLetterHintActivatedColor">@color/rcb_classic_key_text</item>
+    </style>
+    <style name="MainKeyboardView.RcbClassic" parent="KeyboardView.RcbClassic">
+        <item name="keyPreviewBackground">@drawable/keyboard_key_feedback_rcb_classic</item>
+        <item name="keyPreviewOffset">@dimen/rcb_classic_key_preview_gap</item>
+        <item name="languageOnSpacebarTextShadowRadius">-1.0</item>
+    </style>
+    <style name="EmojiPalettesView.RcbClassic" parent="MainKeyboardView.RcbClassic">
+        <item name="categoryPageIndicatorBackground">@color/rcb_classic_panel</item>
+        <item name="iconEmojiRecentsTab">@drawable/ic_emoji_recents</item>
+        <item name="iconEmojiSmileysTab">@drawable/ic_emoji_smileys_emotion</item>
+        <item name="iconEmojiPeopleTab">@drawable/ic_emoji_people_body</item>
+        <item name="iconEmojiNatureTab">@drawable/ic_emoji_animals_nature</item>
+        <item name="iconEmojiFoodTab">@drawable/ic_emoji_food_drink</item>
+        <item name="iconEmojiTravelPlacesTab">@drawable/ic_emoji_travel_places</item>
+        <item name="iconEmojiActivitiesTab">@drawable/ic_emoji_activities</item>
+        <item name="iconEmojiObjectsTab">@drawable/ic_emoji_objects</item>
+        <item name="iconEmojiSymbolsTab">@drawable/ic_emoji_symbols</item>
+        <item name="iconEmojiFlagsTab">@drawable/ic_emoji_flags</item>
+        <item name="iconEmojiEmoticonsTab">@drawable/ic_emoji_emoticons</item>
+    </style>
+    <style name="ClipboardHistoryView.RcbClassic" parent="MainKeyboardView.RcbClassic">
+        <item name="iconPinnedClip">@drawable/ic_clipboard_pin_holo_dark</item>
+    </style>
+    <style name="PopupKeysKeyboard.RcbClassic" parent="Keyboard.RcbClassic">
+        <item name="keyboardTopPadding">0%p</item>
+        <item name="keyboardBottomPadding">0%p</item>
+        <item name="keyboardLeftPadding">0%p</item>
+        <item name="keyboardRightPadding">0%p</item>
+        <item name="horizontalGap">0%p</item>
+        <item name="touchPositionCorrectionData">@null</item>
+    </style>
+    <style name="PopupKeysKeyboardView.RcbClassic" parent="KeyboardView.RcbClassic">
+        <item name="android:background">@drawable/keyboard_popup_panel_background_rcb_classic</item>
+        <item name="keyBackground">@drawable/btn_keyboard_key_popup_rcb_classic</item>
+        <item name="functionalKeyBackground">@drawable/btn_keyboard_key_popup_rcb_classic</item>
+        <item name="divider">@null</item>
+        <item name="verticalCorrection">@dimen/config_popup_keys_keyboard_vertical_correction_holo</item>
+    </style>
+    <style name="SuggestionStripView.RcbClassic" parent="KeyboardView.RcbClassic">
+        <item name="suggestionsCountInStrip">@integer/config_suggestions_count_in_strip</item>
+        <item name="centerSuggestionPercentile">@fraction/config_center_suggestion_percentile</item>
+        <item name="maxMoreSuggestionsRow">@integer/config_max_more_suggestions_row</item>
+        <item name="minMoreSuggestionsWidth">@fraction/config_min_more_suggestions_width</item>
+        <item name="android:background">@color/rcb_classic_background</item>
+        <item name="android:src">@drawable/suggestions_strip_divider_holo</item>
+        <item name="suggestionStripOptions">autoCorrectBold|validTypedWordBold</item>
+        <item name="alphaObsoleted">70%</item>
+    </style>
+    <style name="SuggestionWord.RcbClassic" parent="SuggestionWord">
+        <item name="android:background">@drawable/btn_suggestion_rcb_classic</item>
+        <item name="android:textColor">@color/rcb_classic_suggestion_text</item>
+    </style>
+</resources>

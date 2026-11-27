@@ -670,3 +670,71 @@ enum class ColorType {
 
 // this is not used any more, but we keep in case a colorMap does not get filled for whatever reason
 fun ColorType.default() = ColorUtils.setAlphaComponent(name.hashCode() and 0xffffff, 255)
+
+/**
+ * RCBBoard: fixed colors of the "RCB Classic" style (BlackBerry 10 inspired).
+ * Key surfaces, frets, popup panels and the key preview are fully drawn by the style's drawables
+ * (gradients and pressed states), so they must not be tinted. Everything else (text, icons, toolbar,
+ * emoji and clipboard views) uses a dark [DefaultColors] with a neutral silver instead of a blue accent.
+ */
+class RcbClassicColors private constructor(
+    private val base: DefaultColors,
+    private val background: Int,
+) : Colors by base {
+    override fun selectAndColorDrawable(attr: TypedArray, color: ColorType): Drawable {
+        // the main keyboard replaces these with FretKeyDrawable, see KeyboardView
+        val drawable = when (color) {
+            FUNCTIONAL_KEY_BACKGROUND, ACTION_KEY_BACKGROUND -> attr.getDrawable(R.styleable.KeyboardView_functionalKeyBackground)
+            SPACE_BAR_BACKGROUND -> attr.getDrawable(R.styleable.KeyboardView_spacebarBackground)
+            else -> attr.getDrawable(R.styleable.KeyboardView_keyBackground)
+        }?.mutate() ?: attr.getDrawable(R.styleable.KeyboardView_keyBackground)?.mutate()!!
+        setColor(drawable, color)
+        return drawable
+    }
+
+    override fun setColor(drawable: Drawable, color: ColorType) {
+        if (color in untintedBackgrounds) {
+            DrawableCompat.setTintList(drawable, null)
+            drawable.colorFilter = null
+        } else if (color == ACTION_KEY_ICON) {
+            // action key looks like every other key, so its icon is white like the others
+            base.setColor(drawable, KEY_ICON)
+        } else base.setColor(drawable, color)
+    }
+
+    override fun setBackground(view: View, color: ColorType) {
+        when (color) {
+            KEY_PREVIEW_BACKGROUND, POPUP_KEYS_BACKGROUND -> view.background?.let { setColor(it, color) }
+            MAIN_BACKGROUND, NAVIGATION_BAR -> view.setBackgroundColor(background)
+            else -> base.setBackground(view, color)
+        }
+    }
+
+    companion object {
+        private val untintedBackgrounds = setOf(
+            KEY_BACKGROUND, FUNCTIONAL_KEY_BACKGROUND, SPACE_BAR_BACKGROUND, ACTION_KEY_BACKGROUND,
+            POPUP_KEYS_BACKGROUND, ACTION_KEY_POPUP_KEYS_BACKGROUND, KEY_PREVIEW_BACKGROUND,
+        )
+
+        operator fun invoke(context: Context): RcbClassicColors {
+            fun c(id: Int) = ContextCompat.getColor(context, id)
+            val background = c(R.color.rcb_classic_background)
+            val keyText = c(R.color.rcb_classic_key_text)
+            val base = DefaultColors(
+                themeStyle = helium314.keyboard.keyboard.KeyboardTheme.STYLE_RCB_CLASSIC,
+                hasKeyBorders = true,
+                accent = c(R.color.rcb_classic_accent),
+                background = background,
+                keyBackground = c(R.color.rcb_classic_key_bottom),
+                functionalKey = c(R.color.rcb_classic_functional_bottom),
+                spaceBar = c(R.color.rcb_classic_functional_bottom),
+                keyText = keyText,
+                keyHintText = c(R.color.rcb_classic_hint_text),
+                suggestionText = c(R.color.rcb_classic_suggestion_text),
+                spaceBarText = c(R.color.rcb_classic_hint_text),
+                gesture = c(R.color.rcb_classic_accent),
+            )
+            return RcbClassicColors(base, background)
+        }
+    }
+}

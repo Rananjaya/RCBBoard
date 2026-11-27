@@ -121,6 +121,8 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
             params.baseKeys = baseKeys.flatMap { row -> row.map { it.toKeyParams(params) } }
 
         val allFunctionalKeys = LayoutParser.parseLayout(LayoutType.FUNCTIONAL, params, context)
+        if (Settings.getValues().mIsRcbClassicStyle && element.takesFunctionalKeys)
+            applyRcbClassicKeyWidths(allFunctionalKeys)
         adjustBottomFunctionalRowAndBaseKeys(allFunctionalKeys, baseKeys)
 
         if (allFunctionalKeys.none { it.singleOrNull()?.isKeyPlaceholder() == true })
@@ -162,6 +164,7 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
     /** interprets key width -1, adjusts row size to nicely fit on screen, adds spacers if necessary */
     private fun setReasonableWidths(bassKeyParams: List<List<KeyParams>>, functionalKeys: List<Pair<List<KeyParams>, List<KeyParams>>>): ArrayList<ArrayList<KeyParams>> {
         val keysInRows = ArrayList<ArrayList<KeyParams>>()
+        val rcbClassicEdgeToEdge = Settings.getValues().mIsRcbClassicStyle && params.mId.element.isAlphaOrSymbol
         // expand width = -1 keys and make sure rows fit on screen, insert spacers if necessary
         bassKeyParams.forEachIndexed { i, keys ->
             val (functionalKeysLeft, functionalKeysRight) = functionalKeys[i]
@@ -186,7 +189,14 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
             }
 
             // re-scale total width, or add spacers (or do nothing if totalWidth is near 1)
-            if (totalWidth < 0.9999f) { // add spacers
+            if (totalWidth < 0.9999f && rcbClassicEdgeToEdge && keys.isNotEmpty()) {
+                // RCBBoard: BlackBerry 10 keys run edge to edge, e.g. the 9 keys of the "asdf" row
+                // share the full width instead of being indented by half a key
+                val normalKeysWidth = keys.sumOf { it.mWidth }
+                val scaleFactor = (1f - (totalWidth - normalKeysWidth)) / normalKeysWidth
+                keys.forEach { it.mWidth *= scaleFactor }
+                keysInRows.add(ArrayList(allKeys))
+            } else if (totalWidth < 0.9999f) { // add spacers
                 val spacerWidth = (1f - totalWidth) / 2
                 val paramsRow = ArrayList<KeyParams>(functionalKeysLeft + KeyParams.newSpacer(params, spacerWidth) + keys +
                         KeyParams.newSpacer(params, spacerWidth) + functionalKeysRight)
@@ -209,6 +219,7 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
         val element = params.mId.element
         if (!element.takesFunctionalKeys || bassKeyParams.size < 3 || bassKeyParams.last().isNotEmpty())
             return keysInRows
+        if (rcbClassicEdgeToEdge) return keysInRows // BlackBerry 10 rows stay edge to edge, no spacers
         val lastNormalRow = bassKeyParams[bassKeyParams.lastIndex - 1]
         val rowAboveLast = bassKeyParams[bassKeyParams.lastIndex - 2]
         val lastNormalRowKeyWidth = lastNormalRow.first().mWidth
@@ -264,6 +275,27 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
             }
         }
         baseKeys.add(mutableListOf())
+    }
+
+    /**
+     *  RCBBoard: BlackBerry 10 key widths, fractions of the keyboard width measured on a 717 px wide Z30 reference:
+     *  shift and delete 0.124 (89 px), "?123" and enter 0.1785 (128 px), comma and period 0.1074 (77 px).
+     *  Space and letters take the rest, so space is 0.428 (307 px) and the "zxcv" row letters 0.1074 (77 px).
+     *  Only keys still at their default width are changed, so customized functional key layouts are kept.
+     */
+    private fun applyRcbClassicKeyWidths(allFunctionalKeys: MutableList<MutableList<KeyData>>) {
+        allFunctionalKeys.forEach { row ->
+            for (i in row.indices) {
+                val key = row[i]
+                val width = when (key.label) {
+                    KeyLabel.SHIFT, KeyLabel.DELETE -> if (key.width == RCB_CLASSIC_DEFAULT_WIDE_KEY) 0.124f else continue
+                    KeyLabel.SYMBOL_ALPHA, KeyLabel.ACTION -> if (key.width == RCB_CLASSIC_DEFAULT_WIDE_KEY) 0.1785f else continue
+                    KeyLabel.COMMA, KeyLabel.PERIOD -> if (key.width <= 0f) 0.1074f else continue
+                    else -> continue
+                }
+                row[i] = key.copy(newWidth = width)
+            }
+        }
     }
 
     // ideally we would get all functional keys in a nice list of pairs from the start, but at least it works...
@@ -347,6 +379,8 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
 
     companion object {
         private const val TAG = "KeyboardParser"
+        /** width of shift, delete, "?123" and enter in the default functional key layout */
+        private const val RCB_CLASSIC_DEFAULT_WIDE_KEY = 0.15f
     }
 
 }

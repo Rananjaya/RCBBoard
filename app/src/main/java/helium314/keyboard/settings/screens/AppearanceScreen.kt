@@ -56,20 +56,22 @@ fun AppearanceScreen(
     if ((b?.value ?: 0) < 0)
         Log.v("irrelevant", "stupid way to trigger recomposition on preference change")
     val dayNightMode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && prefs.getBoolean(Settings.PREF_THEME_DAY_NIGHT, Defaults.PREF_THEME_DAY_NIGHT)
+    // RCB Classic has fixed colors, borders and background, so the related settings would have no effect
+    val rcbClassic = prefs.getString(Settings.PREF_THEME_STYLE, Defaults.PREF_THEME_STYLE) == KeyboardTheme.STYLE_RCB_CLASSIC
     val items = listOf(
         R.string.settings_screen_theme,
         Settings.PREF_THEME_STYLE,
         Settings.PREF_ICON_STYLE,
         Settings.PREF_ACCENT_SHIFTED_ICON,
         Settings.PREF_CUSTOM_ICON_NAMES,
-        Settings.PREF_THEME_KEY_BORDERS,
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+        if (!rcbClassic) Settings.PREF_THEME_KEY_BORDERS else null,
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && !rcbClassic)
             Settings.PREF_THEME_DAY_NIGHT else null,
-        Settings.PREF_THEME_COLORS,
-        if (dayNightMode) Settings.PREF_THEME_COLORS_NIGHT else null,
+        if (!rcbClassic) Settings.PREF_THEME_COLORS else null,
+        if (dayNightMode && !rcbClassic) Settings.PREF_THEME_COLORS_NIGHT else null,
         Settings.PREF_NAVBAR_COLOR,
-        SettingsWithoutKey.BACKGROUND_IMAGE,
-        SettingsWithoutKey.BACKGROUND_IMAGE_LANDSCAPE,
+        if (!rcbClassic) SettingsWithoutKey.BACKGROUND_IMAGE else null,
+        if (!rcbClassic) SettingsWithoutKey.BACKGROUND_IMAGE_LANDSCAPE else null,
         R.string.settings_category_miscellaneous,
         Settings.PREF_ENABLE_SPLIT_KEYBOARD,
         if (prefs.getBoolean(Settings.PREF_ENABLE_SPLIT_KEYBOARD_LANDSCAPE, Defaults.PREF_ENABLE_SPLIT_KEYBOARD)
@@ -78,7 +80,7 @@ fun AppearanceScreen(
             || prefs.getBoolean(Settings.PREF_ENABLE_SPLIT_KEYBOARD_FOLDED_LANDSCAPE, Defaults.PREF_ENABLE_SPLIT_KEYBOARD)
             )
             Settings.PREF_SPLIT_SPACER_SCALE_PREFIX else null,
-        if (prefs.getBoolean(Settings.PREF_THEME_KEY_BORDERS, Defaults.PREF_THEME_KEY_BORDERS))
+        if (prefs.getBoolean(Settings.PREF_THEME_KEY_BORDERS, Defaults.PREF_THEME_KEY_BORDERS) && !rcbClassic)
             Settings.PREF_KEY_GAP_SCALE_PREFIX else null,
         Settings.PREF_KEYBOARD_HEIGHT_SCALE_PREFIX,
         Settings.PREF_BOTTOM_ROW_SCALE_PREFIX,
@@ -102,6 +104,15 @@ fun AppearanceScreen(
     )
 }
 
+/** keyboard thumbnails for the theme style picker, captured from the real keyboard */
+private fun styleThumbnail(style: String) = when (style) {
+    KeyboardTheme.STYLE_MATERIAL -> R.drawable.style_preview_material
+    KeyboardTheme.STYLE_HOLO -> R.drawable.style_preview_holo
+    KeyboardTheme.STYLE_ROUNDED -> R.drawable.style_preview_rounded
+    KeyboardTheme.STYLE_RCB_CLASSIC -> R.drawable.style_preview_rcb_classic
+    else -> null
+}
+
 fun createAppearanceSettings(context: Context) = listOf(
     Setting(context, Settings.PREF_THEME_STYLE, R.string.theme_style) { setting ->
         val ctx = LocalContext.current
@@ -112,7 +123,8 @@ fun createAppearanceSettings(context: Context) = listOf(
         ListPreference(
             setting,
             items,
-            Defaults.PREF_THEME_STYLE
+            Defaults.PREF_THEME_STYLE,
+            getItemImage = { styleThumbnail(it) },
         ) {
             if (it != KeyboardTheme.STYLE_HOLO) {
                 if (prefs.getString(Settings.PREF_THEME_COLORS, Defaults.PREF_THEME_COLORS) == KeyboardTheme.THEME_HOLO_WHITE)

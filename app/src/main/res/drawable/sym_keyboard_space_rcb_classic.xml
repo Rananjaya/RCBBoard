@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fret (RCB Classic) key icon: original line drawing, its viewport matches the icon proportions
+     measured on the BlackBerry Z30 reference (101 x 16 px, 5 px stroke). The keyboard scales it to the row height.
+     SPDX-License-Identifier: GPL-3.0-only -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="101dp" android:height="16dp"
+    android:viewportWidth="101" android:viewportHeight="16">
+    <path android:strokeColor="#FFF" android:strokeWidth="5" android:strokeLineCap="butt" android:strokeLineJoin="miter" android:pathData="M2.5,0 L2.5,13.5 L98.5,13.5 L98.5,0" />
+</vector>

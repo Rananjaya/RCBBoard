@@ -176,6 +176,10 @@ object KeyLabel {
         params.mId.internalAction?.let { return it.label }
         if (params.mId.isMultiLine && params.mId.element == KeyboardElement.ALPHABET_MANUAL_SHIFTED)
             return "!icon/enter_key"
+        // RCBBoard: like BlackBerry 10, the Fret style always shows the return arrow, the key still performs
+        // the editor action (search, go, send...). Custom action labels set by the app are kept.
+        if (Settings.getValues().mIsRcbClassicStyle && params.mId.imeAction != InputTypeUtils.IME_ACTION_CUSTOM_LABEL)
+            return "!icon/enter_key"
         val iconName = when (params.mId.imeAction) {
             EditorInfo.IME_ACTION_GO               -> KeyboardIconsSet.NAME_GO_KEY
             EditorInfo.IME_ACTION_SEARCH           -> KeyboardIconsSet.NAME_SEARCH_KEY

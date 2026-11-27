@@ -711,11 +711,14 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
         final int code = key.getCode();
         if (code == Constants.CODE_SPACE) {
             // If input language are explicitly selected.
-            if (mLanguageOnSpacebarFormatType != LanguageOnSpacebarUtils.FORMAT_TYPE_NONE) {
+            // RCB Classic draws the BlackBerry 10 style space bracket instead of the language name
+            if (mLanguageOnSpacebarFormatType != LanguageOnSpacebarUtils.FORMAT_TYPE_NONE
+                    && !KeyboardTheme.STYLE_RCB_CLASSIC.equals(Settings.getValues().mColors.getThemeStyle())) {
                 drawLanguageOnSpacebar(key, canvas, paint);
             }
             // Whether space key needs to show the "..." popup hint for special purposes
-            if (key.isLongPressEnabled() && mHasMultipleEnabledIMEsOrSubtypes && Settings.getValues().mSpaceForLangChange) {
+            if (key.isLongPressEnabled() && mHasMultipleEnabledIMEsOrSubtypes && Settings.getValues().mSpaceForLangChange
+                    && !Settings.getValues().mIsRcbClassicStyle) { // RCB Classic: long press hides the keyboard instead
                 drawKeyPopupHint(key, canvas, paint, params);
             }
         } else if (code == KeyCode.LANGUAGE_SWITCH) {

@@ -473,6 +473,9 @@ sealed interface KeyData : AbstractKeyData {
             )
 
             KeyLabel.ZWNJ -> SimplePopups(listOf("!icon/zwj_key|\u200D"))
+            // RCBBoard: like BlackBerry 10, holding space hides the keyboard in the Fret (RCB Classic) style
+            KeyLabel.SPACE -> if (isRcbClassicAlphabet(params) && popup.isEmpty())
+                SimplePopups(listOf("!noPanelAutoPopupKey!", " |!code/${KeyCode.IME_HIDE_UI}")) else null
             // only add currency popups if there are none defined on the key
             KeyLabel.CURRENCY -> if (popup.isEmpty()) SimplePopups(params.mLocaleKeyboardInfos.currencyKey.second) else null
             else -> null
@@ -482,8 +485,15 @@ sealed interface KeyData : AbstractKeyData {
     private fun getPeriodPopups(params: KeyboardParams): SimplePopups =
         SimplePopups(
             if (shouldShowTldPopups(params)) params.mLocaleKeyboardInfos.tlds
+            // RCBBoard: like BlackBerry 10, holding the period starts voice input in the Fret (RCB Classic) style,
+            // when voice input is available (the key then shows a microphone, see KeyboardView)
+            else if (isRcbClassicAlphabet(params) && Settings.getValues().mShowsVoiceInputKey)
+                listOf("!noPanelAutoPopupKey!", " |!code/key_voice_input")
             else getPunctuationPopupKeys(params)
         )
+
+    private fun isRcbClassicAlphabet(params: KeyboardParams) =
+        Settings.getValues().mIsRcbClassicStyle && params.mId.element.isAlphabet
 }
 
 /**

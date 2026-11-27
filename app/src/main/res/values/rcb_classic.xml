@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    RCBBoard "RCB Classic" style, inspired by the BlackBerry 10 (Z10 / Z30) virtual keyboard.
+    All values are original and derived from proportions measured on reference screenshots,
+    see docs/screenshots/rcb-classic/README.md. No BlackBerry assets are used.
+    SPDX-License-Identifier: GPL-3.0-only
+-->
+<resources>
+    <!-- surfaces -->
+    <color name="rcb_classic_background">#FF000000</color>
+    <!-- tiles, sampled from the BlackBerry Z30 reference: letters, space, comma, period -->
+    <color name="rcb_classic_key_top">#FF505052</color>
+    <color name="rcb_classic_key_center">#FF353535</color>
+    <color name="rcb_classic_key_bottom">#FF2B2B2B</color>
+    <color name="rcb_classic_key_rim">#FF404040</color>
+    <!-- shift, delete, ?123, enter: darker tile -->
+    <color name="rcb_classic_functional_top">#FF2E2E2E</color>
+    <color name="rcb_classic_functional_center">#FF181818</color>
+    <color name="rcb_classic_functional_bottom">#FF121212</color>
+    <color name="rcb_classic_functional_rim">#FF262626</color>
+    <color name="rcb_classic_key_pressed_top">#FF7A7A7E</color>
+    <color name="rcb_classic_key_pressed_center">#FF5A5A5E</color>
+    <color name="rcb_classic_key_pressed_bottom">#FF444448</color>
+    <color name="rcb_classic_key_pressed_rim">#FF8A8A8E</color>
+    <color name="rcb_classic_panel">#FF1E1E20</color>
+    <color name="rcb_classic_panel_border">#FF6E6E72</color>
+    <!-- text -->
+    <color name="rcb_classic_key_text">#FFFFFFFF</color>
+    <color name="rcb_classic_hint_text">#FF8E8E93</color>
+    <color name="rcb_classic_suggestion_text">#FFE6E6E6</color>
+    <!-- neutral silver instead of a blue accent -->
+    <color name="rcb_classic_accent">#FFBDBDC2</color>
+
+    <dimen name="rcb_classic_key_radius">2.6dp</dimen>
+    <dimen name="rcb_classic_key_rim_width">1dp</dimen>
+    <dimen name="rcb_classic_panel_radius">3dp</dimen>
+    <!-- gap between the preview balloon and the top of the pressed key -->
+    <dimen name="rcb_classic_key_preview_gap">4dp</dimen>
+
+    <!-- BB10 keys run edge to edge: no gaps between key cells, frets and tile gaps are drawn by FretBackgroundDrawable and FretKeyDrawable -->
+    <fraction name="rcb_classic_key_horizontal_gap">0%p</fraction>
+    <fraction name="rcb_classic_key_vertical_gap">0%p</fraction>
+    <fraction name="rcb_classic_keyboard_top_padding">0%p</fraction>
+    <fraction name="rcb_classic_keyboard_bottom_padding">0%p</fraction>
+
+    <!-- Default 4-row keyboard height relative to the keyboard width in portrait, measured on the BlackBerry Z30
+         reference: 4 rows of 117 px on a 717 px wide keyboard = 468 / 717 = 0.653.
+         Scaling with width keeps the BlackBerry key aspect ratio, see docs/screenshots/rcb-classic/README.md -->
+    <item name="rcb_classic_keyboard_height_to_width" format="float" type="dimen">0.653</item>
+    <!-- letter size relative to the key height used for text: Z30 cap height is 30 / 117 = 0.256 of the row pitch -->
+    <fraction name="rcb_classic_key_letter_ratio">36%</fraction>
+    <fraction name="rcb_classic_key_large_letter_ratio">40%</fraction>
+    <fraction name="rcb_classic_key_label_ratio">30%</fraction>
+    <fraction name="rcb_classic_key_hint_letter_ratio">22%</fraction>
+    <fraction name="rcb_classic_key_hint_label_ratio">40%</fraction>
+    <fraction name="rcb_classic_key_shifted_letter_hint_ratio">30%</fraction>
+</resources>
