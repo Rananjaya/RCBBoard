@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fret (RCB Classic) hint on the space bar: holding it hides the keyboard, like BlackBerry 10.
+     Original drawing, 32 x 24 like the BlackBerry Z30 reference. SPDX-License-Identifier: GPL-3.0-only -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp" android:height="24dp" android:viewportWidth="32" android:viewportHeight="24">
+    <!-- keyboard with two rows of keys cut out -->
+    <path android:fillColor="#FF8A8984" android:fillType="evenOdd"
+        android:pathData="M1.5,0 L30.5,0 Q32,0 32,1.5 L32,13.5 Q32,15 30.5,15 L1.5,15 Q0,15 0,13.5 L0,1.5 Q0,0 1.5,0 Z
+            M3,2.5 L7.5,2.5 L7.5,6 L3,6 Z M10,2.5 L14.5,2.5 L14.5,6 L10,6 Z M17.5,2.5 L22,2.5 L22,6 L17.5,6 Z M24.5,2.5 L29,2.5 L29,6 L24.5,6 Z
+            M3,9 L7.5,9 L7.5,12.5 L3,12.5 Z M10,9 L22,9 L22,12.5 L10,12.5 Z M24.5,9 L29,9 L29,12.5 L24.5,12.5 Z" />
+    <!-- down arrow -->
+    <path android:fillColor="#FF8A8984" android:pathData="M10.5,17.5 L21.5,17.5 L16,24 Z" />
+</vector>

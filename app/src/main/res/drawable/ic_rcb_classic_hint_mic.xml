@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fret (RCB Classic) hint on the period key: holding it starts voice input, like BlackBerry 10.
+     Original drawing, 25 x 31 like the BlackBerry Z30 reference. SPDX-License-Identifier: GPL-3.0-only -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="25dp" android:height="31dp" android:viewportWidth="25" android:viewportHeight="31">
+    <!-- capsule -->
+    <path android:fillColor="#FF8A8984" android:pathData="M12.5,0 C16.1,0 19,2.9 19,6.5 L19,12.5 C19,16.1 16.1,19 12.5,19 C8.9,19 6,16.1 6,12.5 L6,6.5 C6,2.9 8.9,0 12.5,0 Z" />
+    <!-- holder arc and stem -->
+    <path android:strokeColor="#FF8A8984" android:strokeWidth="2.6" android:pathData="M2.3,11.5 C2.3,18 6.8,22.6 12.5,22.6 C18.2,22.6 22.7,18 22.7,11.5 M12.5,22.6 L12.5,27.5" />
+    <!-- base -->
+    <path android:fillColor="#FF8A8984" android:pathData="M3,31 C3,28.3 7.3,26.8 12.5,26.8 C17.7,26.8 22,28.3 22,31 Z" />
+</vector>

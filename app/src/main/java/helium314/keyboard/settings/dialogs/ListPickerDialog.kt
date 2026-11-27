@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.settings.dialogs
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,6 +50,8 @@ fun <T: Any> ListPickerDialog(
     showRadioButtons: Boolean = true,
     description: String? = null,
     onDefault: (() -> Unit)? = null,
+    /** optional preview image shown in each row, e.g. a keyboard thumbnail for theme styles */
+    getItemImage: ((T) -> Int?)? = null,
 ) {
     var selected by remember { mutableStateOf(selectedItem) }
     val state = rememberLazyListState()
@@ -82,7 +90,7 @@ fun <T: Any> ListPickerDialog(
                                         selected = item
                                     }
                                     .padding(horizontal = if (showRadioButtons) 8.dp else 16.dp)
-                                    .heightIn(min = 40.dp)
+                                    .heightIn(min = if (getItemImage != null) 64.dp else 40.dp)
                             ) {
                                 if (showRadioButtons)
                                     RadioButton(
@@ -95,6 +103,15 @@ fun <T: Any> ListPickerDialog(
                                             selected = item
                                         }
                                     )
+                                getItemImage?.invoke(item)?.let { image ->
+                                    Image(
+                                        painter = painterResource(image),
+                                        contentDescription = null, // the name next to it describes the item
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier.width(96.dp).padding(vertical = 6.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                    )
+                                }
                                 Text(
                                     text = getItemName(item),
                                     modifier = Modifier.weight(1f),

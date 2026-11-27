@@ -6,6 +6,7 @@
 
 package helium314.keyboard.keyboard;
 
+import static helium314.keyboard.keyboard.KeyboardTheme.STYLE_RCB_CLASSIC;
 import static helium314.keyboard.keyboard.KeyboardTheme.STYLE_ROUNDED;
 
 import android.content.Context;
@@ -30,6 +31,8 @@ import androidx.annotation.Nullable;
 import helium314.keyboard.keyboard.emoji.EmojiPageKeyboardView;
 import helium314.keyboard.keyboard.internal.KeyDrawParams;
 import helium314.keyboard.keyboard.internal.KeyVisualAttributes;
+import androidx.core.content.ContextCompat;
+import helium314.keyboard.keyboard.internal.PopupKeySpec;
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode;
 import helium314.keyboard.latin.R;
 import helium314.keyboard.latin.common.ColorType;
@@ -65,6 +68,13 @@ public class KeyboardView extends View {
     private final Rect mKeyBackgroundPadding = new Rect();
     private static final float KET_TEXT_SHADOW_RADIUS_DISABLED = -1.0f;
     private final Colors mColors;
+    /** RCBBoard: RCB Classic shows capital letters on the letter keys at all times, like BlackBerry 10 */
+    private final boolean mUppercaseLetterLabels;
+    /** RCBBoard: main keyboard in RCB Classic style, keys are sized in BlackBerry Z30 proportions, see FretKeyDrawable */
+    private final boolean mFretGeometry;
+    /** RCBBoard: grey long-press hints of the Fret style, microphone on period and "hide keyboard" on space */
+    @Nullable private final Drawable mFretMicHint;
+    @Nullable private final Drawable mFretHideHint;
     private float mKeyScaleForText;
     protected float mFontSizeMultiplier;
     protected float mHintFontSizeMultiplier;
@@ -106,19 +116,29 @@ public class KeyboardView extends View {
     public KeyboardView(final Context context, final AttributeSet attrs, final int defStyle) {
         super(context, attrs, defStyle);
         mColors = Settings.getValues().mColors;
+        mUppercaseLetterLabels = STYLE_RCB_CLASSIC.equals(mColors.getThemeStyle());
 
         final TypedArray keyboardViewAttr = context.obtainStyledAttributes(attrs,
                 R.styleable.KeyboardView, defStyle, R.style.KeyboardView);
-        if (this instanceof MoreSuggestionsView)
+        mFretGeometry = mUppercaseLetterLabels && this instanceof MainKeyboardView;
+        mFretMicHint = mFretGeometry ? ContextCompat.getDrawable(context, R.drawable.ic_rcb_classic_hint_mic) : null;
+        mFretHideHint = mFretGeometry ? ContextCompat.getDrawable(context, R.drawable.ic_rcb_classic_hint_hide) : null;
+        if (mFretGeometry) // light tiles for letters, space, comma and period, dark for the other functional keys
+            mKeyBackground = new FretKeyDrawable(false);
+        else if (this instanceof MoreSuggestionsView)
             mKeyBackground = mColors.selectAndColorDrawable(keyboardViewAttr, ColorType.MORE_SUGGESTIONS_WORD_BACKGROUND);
         else if (this instanceof PopupKeysKeyboardView)
             mKeyBackground = mColors.selectAndColorDrawable(keyboardViewAttr, ColorType.POPUP_KEYS_BACKGROUND);
         else
             mKeyBackground = mColors.selectAndColorDrawable(keyboardViewAttr, ColorType.KEY_BACKGROUND);
         mKeyBackground.getPadding(mKeyBackgroundPadding);
-        mFunctionalKeyBackground = mColors.selectAndColorDrawable(keyboardViewAttr, ColorType.FUNCTIONAL_KEY_BACKGROUND);
-        mSpacebarBackground = mColors.selectAndColorDrawable(keyboardViewAttr, ColorType.SPACE_BAR_BACKGROUND);
-        if (this instanceof PopupKeysKeyboardView)
+        mFunctionalKeyBackground = mFretGeometry ? new FretKeyDrawable(true)
+                : mColors.selectAndColorDrawable(keyboardViewAttr, ColorType.FUNCTIONAL_KEY_BACKGROUND);
+        mSpacebarBackground = mFretGeometry ? new FretKeyDrawable(false)
+                : mColors.selectAndColorDrawable(keyboardViewAttr, ColorType.SPACE_BAR_BACKGROUND);
+        if (mFretGeometry)
+            mActionKeyBackground = new FretKeyDrawable(true);
+        else if (this instanceof PopupKeysKeyboardView)
             mActionKeyBackground = mColors.selectAndColorDrawable(keyboardViewAttr, ColorType.ACTION_KEY_POPUP_KEYS_BACKGROUND);
         else
             mActionKeyBackground = mColors.selectAndColorDrawable(keyboardViewAttr, ColorType.ACTION_KEY_BACKGROUND);
@@ -178,6 +198,9 @@ public class KeyboardView extends View {
             mColors.setBackground(this, ColorType.MORE_SUGGESTIONS_BACKGROUND);
         } else if (keyboard instanceof PopupKeysKeyboard) {
             mColors.setBackground(this, ColorType.POPUP_KEYS_BACKGROUND);
+        } else if (mFretGeometry) {
+            // RCB Classic (Fret): one continuous metal fret above every row, see FretBackgroundDrawable
+            setBackground(new FretBackgroundDrawable(getResources(), getRowTops(keyboard)));
         } else {
             // actual background color/drawable is applied to main_keyboard_frame
             setBackgroundColor(Color.TRANSPARENT);
@@ -284,7 +307,8 @@ public class KeyboardView extends View {
             return;
         }
 
-        mShowsHints = Settings.getValues().mShowsHints;
+        // RCB Classic: BlackBerry 10 keys carry only their letter, long-press popups still work
+        mShowsHints = Settings.getValues().mShowsHints && !mUppercaseLetterLabels;
         final float scale = Settings.getValues().mKeyboardHeightScale;
         mIconScaleFactor = scale < 0.8f ? scale + 0.2f : 1f;
         final Paint paint = mPaint;
@@ -339,8 +363,10 @@ public class KeyboardView extends View {
         params.mAnimAlpha = Constants.Color.ALPHA_OPAQUE;
 
         if (!key.isSpacer()) {
-            final Drawable background = key.selectBackgroundDrawable(
-                    mKeyBackground, mFunctionalKeyBackground, mSpacebarBackground, mActionKeyBackground);
+            // RCB Classic: comma and period have the light letter tile, like on the BlackBerry Z30
+            final boolean lightFunctional = mFretGeometry && (key.getCode() == ',' || key.getCode() == '.');
+            final Drawable background = key.selectBackgroundDrawable(mKeyBackground,
+                    lightFunctional ? mKeyBackground : mFunctionalKeyBackground, mSpacebarBackground, mActionKeyBackground);
             onDrawKeyBackground(key, canvas, background);
         }
         onDrawKeyTopVisuals(key, canvas, paint, params);
@@ -380,7 +406,8 @@ public class KeyboardView extends View {
         final int keyWidth = key.getDrawWidth();
         final int keyHeight = key.getHeight();
         final float centerX = keyWidth * 0.5f;
-        final float centerY = keyHeight * 0.5f;
+        // RCB Classic: letters and icons sit 3/117 of the row above the centre of the tile below the fret
+        final float centerY = keyHeight * (mFretGeometry ? FretKeyDrawable.CONTENT_CENTER : 0.5f);
 
         // Draw key label.
         final Keyboard keyboard = getKeyboard();
@@ -388,7 +415,7 @@ public class KeyboardView extends View {
                 : key.getIcon(keyboard.mIconsSet, params.mAnimAlpha);
         float labelX = centerX;
         float labelBaseline = centerY;
-        final String label = key.getLabel();
+        final String label = getDisplayLabel(key, keyboard);
         if (label != null) {
             paint.setTypeface(KeyboardTypeface.resolve(label, key.selectTypeface(params)));
             paint.setTextSize(key.selectTextSize(params) * mFontSizeMultiplier);
@@ -538,13 +565,84 @@ public class KeyboardView extends View {
                 ? (int) (keyWidth * mSpacebarIconWidthRatio * mIconScaleFactor)
                 : (int) (Math.min(icon.getIntrinsicWidth(), keyWidth) * mIconScaleFactor);
             int iconHeight = (int) (icon.getIntrinsicHeight() * mIconScaleFactor);
+            final float fretIconRatio = mFretGeometry ? fretIconHeightRatio(key) : 0f;
+            if (fretIconRatio > 0f && icon.getIntrinsicHeight() > 0) {
+                // RCB Classic: shift, delete, space and enter icons in the proportions of the BlackBerry Z30
+                iconHeight = Math.round(keyHeight * fretIconRatio);
+                iconWidth = Math.round(iconHeight * (float) icon.getIntrinsicWidth() / icon.getIntrinsicHeight());
+            }
             int iconY = key.isAlignIconToBottom()
                 ? keyHeight - iconHeight
+                : fretIconRatio > 0f ? Math.round(centerY - iconHeight / 2f)
                 : (keyHeight - iconHeight) / 2; // Align vertically center.
             int iconX = (keyWidth - iconWidth) / 2; // Align horizontally center.
             setKeyIconColor(key, icon, keyboard);
             drawIcon(canvas, icon, iconX, iconY, iconWidth, iconHeight);
         }
+        if (mFretGeometry) drawFretLongPressHint(key, canvas);
+    }
+
+    /**
+     * RCB Classic: the grey hints of the BlackBerry Z30, shown only when the key's long press does that action.
+     * Sizes and positions are fractions of the row pitch (117 px on the reference) and of the key width.
+     */
+    private void drawFretLongPressHint(@NonNull final Key key, @NonNull final Canvas canvas) {
+        final int keyHeight = key.getHeight();
+        final int keyWidth = key.getDrawWidth();
+        if (key.getCode() == '.' && hasPopupCode(key, KeyCode.VOICE_INPUT) && mFretMicHint != null) {
+            // microphone 25 x 31 px, 14 px right of the key centre (0.18 of the key width), top 23 px below the row top
+            final int h = Math.round(keyHeight * 31f / 117f);
+            final int w = Math.round(h * 25f / 31f);
+            final int x = Math.round(keyWidth * 0.5f + keyWidth * 0.18f - w / 2f);
+            drawIcon(canvas, mFretMicHint, x, Math.round(keyHeight * 23f / 117f), w, h);
+        } else if (key.getCode() == Constants.CODE_SPACE && hasPopupCode(key, KeyCode.IME_HIDE_UI) && mFretHideHint != null) {
+            // keyboard with arrow 32 x 24 px, right edge 12.5 px inside the key, top 28 px below the row top
+            final int h = Math.round(keyHeight * 24f / 117f);
+            final int w = Math.round(h * 32f / 24f);
+            final int x = Math.round(keyWidth - keyHeight * 12.5f / 117f - w);
+            drawIcon(canvas, mFretHideHint, x, Math.round(keyHeight * 28f / 117f), w, h);
+        }
+    }
+
+    private static boolean hasPopupCode(@NonNull final Key key, final int code) {
+        final PopupKeySpec[] popupKeys = key.getPopupKeys();
+        return popupKeys != null && popupKeys.length == 1 && popupKeys[0].mCode == code;
+    }
+
+    /** RCB Classic icon height as a fraction of the row pitch, measured on the BlackBerry Z30 (117 px pitch), 0 for other icons */
+    private static float fretIconHeightRatio(@NonNull final Key key) {
+        if (key.hasActionKeyBackground()) return 26f / 117f; // return arrow 30 x 26 px
+        switch (key.getCode()) {
+            case KeyCode.SHIFT: return 30f / 117f; // 27 x 30 px
+            case KeyCode.DELETE: return 30f / 117f; // 34 x 30 px
+            case Constants.CODE_SPACE: return 16f / 117f; // bracket 101 x 16 px
+            default: return 0f;
+        }
+    }
+
+    /** distinct top coordinates of the key rows, in view coordinates */
+    private int[] getRowTops(@NonNull final Keyboard keyboard) {
+        final java.util.TreeSet<Integer> tops = new java.util.TreeSet<>();
+        for (final Key key : keyboard.getSortedKeys()) {
+            if (!key.isSpacer()) tops.add(key.getY() + getPaddingTop());
+        }
+        final int[] result = new int[tops.size()];
+        int i = 0;
+        for (final int top : tops) result[i++] = top;
+        return result;
+    }
+
+    /** the key label, as capital letter for letter keys in RCB Classic style (only how it is drawn, not what is typed) */
+    @Nullable
+    private String getDisplayLabel(@NonNull final Key key, @Nullable final Keyboard keyboard) {
+        final String label = key.getLabel();
+        if (!mUppercaseLetterLabels || label == null || keyboard == null
+                || key.getBackgroundType() != Key.BACKGROUND_TYPE_NORMAL
+                || label.codePointCount(0, label.length()) != 1 || !Character.isLowerCase(label.codePointAt(0)))
+            return label;
+        final String upper = label.toUpperCase(keyboard.mId.getLocale());
+        // keep labels like "ß" whose capital form is more than one character
+        return upper.codePointCount(0, upper.length()) == 1 ? upper : label;
     }
 
     // Draw popup hint "..." at the center or bottom right corner of the key, depending on style.

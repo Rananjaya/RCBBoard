@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- RCB Classic popup key: flat on the panel, lit when selected. SPDX-License-Identifier: GPL-3.0-only -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape><corners android:radius="@dimen/rcb_classic_panel_radius" />
+            <gradient android:angle="270" android:startColor="@color/rcb_classic_key_pressed_top" android:endColor="@color/rcb_classic_key_pressed_bottom" /></shape>
+    </item>
+    <item><shape><solid android:color="@android:color/transparent" /></shape></item>
+</selector>

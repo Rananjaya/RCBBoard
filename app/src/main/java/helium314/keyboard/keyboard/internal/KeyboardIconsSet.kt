@@ -28,6 +28,7 @@ class KeyboardIconsSet private constructor() {
         val defaultIds = when (iconStyle) {
             KeyboardTheme.STYLE_HOLO -> keyboardIconsHolo
             KeyboardTheme.STYLE_ROUNDED -> keyboardIconsRounded
+            KeyboardTheme.STYLE_RCB_CLASSIC -> keyboardIconsRcbClassic
             else -> keyboardIconsMaterial
         }
         val overrideIds = customIconIds(context, prefs)
@@ -235,6 +236,16 @@ class KeyboardIconsSet private constructor() {
             }
         } }
 
+        /** RCBBoard: thin outline key icons for the RCB Classic style, Material icons for everything else */
+        private val keyboardIconsRcbClassic by lazy { HashMap(keyboardIconsMaterial).apply {
+            put(NAME_SHIFT_KEY, R.drawable.sym_keyboard_shift_rcb_classic)
+            put(NAME_SHIFT_KEY_SHIFTED, R.drawable.sym_keyboard_shifted_rcb_classic)
+            put(NAME_SHIFT_KEY_LOCKED, R.drawable.sym_keyboard_shift_lock_rcb_classic)
+            put(NAME_DELETE_KEY, R.drawable.sym_keyboard_delete_rcb_classic)
+            put(NAME_ENTER_KEY, R.drawable.sym_keyboard_return_rcb_classic)
+            put(NAME_SPACE_KEY, R.drawable.sym_keyboard_space_rcb_classic)
+        } }
+
         private val keyboardIconsRounded by lazy { hashMapOf(
             NAME_SHIFT_KEY to                   R.drawable.sym_keyboard_shift_rounded,
             NAME_SHIFT_KEY_SHIFTED to           R.drawable.sym_keyboard_shifted_rounded,
@@ -348,6 +359,7 @@ class KeyboardIconsSet private constructor() {
                 name to when (iconStyle) {
                     KeyboardTheme.STYLE_HOLO -> listOfNotNull(keyboardIconsHolo[name], keyboardIconsRounded[name], id)
                     KeyboardTheme.STYLE_ROUNDED -> listOfNotNull(keyboardIconsRounded[name], id, keyboardIconsHolo[name])
+                    KeyboardTheme.STYLE_RCB_CLASSIC -> listOfNotNull(keyboardIconsRcbClassic[name], id, keyboardIconsRounded[name], keyboardIconsHolo[name]).distinct()
                     else -> listOfNotNull(id, keyboardIconsRounded[name], keyboardIconsHolo[name])
                 }
             }

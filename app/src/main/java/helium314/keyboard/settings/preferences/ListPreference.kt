@@ -21,6 +21,7 @@ fun <T: Any> ListPreference(
     default: T,
     onDefault: (() -> Unit)? = null,
     description: String? = null,
+    getItemImage: ((T) -> Int?)? = null,
     onChanged: (T) -> Unit = { }
 ) {
     var showDialog by rememberSaveable { mutableStateOf(false) }
@@ -44,6 +45,7 @@ fun <T: Any> ListPreference(
             title = { Text(setting.title) },
             getItemName = { it.first },
             description = description,
+            getItemImage = getItemImage?.let { getImage -> { item: Pair<String, T> -> getImage(item.second) } },
             onDefault = {
                 onDefault?.let {
                     onChanged(default)

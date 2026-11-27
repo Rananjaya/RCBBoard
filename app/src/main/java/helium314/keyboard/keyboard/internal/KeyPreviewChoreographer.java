@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import helium314.keyboard.keyboard.Key;
+import helium314.keyboard.keyboard.KeyboardTheme;
 import helium314.keyboard.latin.common.ColorType;
 import helium314.keyboard.latin.common.Colors;
 import helium314.keyboard.latin.common.CoordinateUtils;
@@ -114,6 +115,9 @@ public final class KeyPreviewChoreographer {
         // arbitrary offset.
         int previewY = key.getY() - previewHeight + key.getHeight() - mParams.mPreviewOffset
                 + CoordinateUtils.y(originCoords);
+        // RCBBoard: the Fret (RCB Classic) balloon floats fully above the pressed key instead of covering it
+        if (KeyboardTheme.STYLE_RCB_CLASSIC.equals(colors.getThemeStyle()))
+            previewY -= key.getHeight();
 
         ViewLayoutUtils.placeViewAt(keyPreviewView, previewX, previewY, previewWidth, previewHeight);
         keyPreviewView.setPivotX(previewWidth / 2.0f);

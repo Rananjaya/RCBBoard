@@ -717,6 +717,8 @@ New dictionary:
     <string name="icon_style">Icon style</string>
     <!-- Style name for Rounded style -->
     <string name="style_name_Rounded" tools:keep="@string/style_name_Rounded">Rounded</string>
+    <!-- Name of the BlackBerry 10 inspired keyboard style -->
+    <string name="style_name_RCBClassic" tools:keep="@string/style_name_RCBClassic">Fret</string>
     <!-- Option for choosing colors -->
     <string name="theme_colors">Colors</string>
     <!-- Option for choosing colors for night mode -->
