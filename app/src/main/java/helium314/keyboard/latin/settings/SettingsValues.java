@@ -21,6 +21,7 @@ import androidx.core.util.TypedValueCompat;
 import helium314.keyboard.compat.ConfigurationCompatKt;
 import helium314.keyboard.compat.IsLockedCompatKt;
 import helium314.keyboard.keyboard.KeyboardActionListener;
+import helium314.keyboard.keyboard.FretPredictions;
 import helium314.keyboard.keyboard.KeyboardTheme;
 import helium314.keyboard.keyboard.internal.KeyboardState;
 import helium314.keyboard.keyboard.internal.keyboard_parser.LocaleKeyboardInfos;
@@ -129,6 +130,8 @@ public class SettingsValues {
     public final float mKeyboardHeightScale;
     /** RCBBoard: RCB Classic style has its own BlackBerry 10 inspired default keyboard height */
     public final boolean mIsRcbClassicStyle;
+    /** RCBBoard: where the Fret style shows word predictions on the keyboard, OFF for other styles */
+    public final FretPredictions.Mode mFretPredictionMode;
     public final float mBottomRowScale;
     public final boolean mUrlDetectionEnabled;
     public final float mBottomPaddingScale;
@@ -299,6 +302,9 @@ public class SettingsValues {
         mFloatingHeight = mIsFloatingKeyboard ? SettingsKt.readFloatingHeight(context) : 0;
         mKeyboardHeightScale = mIsFloatingKeyboard ? 1f : Settings.readHeightScale(prefs, isLandscape, isFolded);
         mIsRcbClassicStyle = KeyboardTheme.STYLE_RCB_CLASSIC.equals(prefs.getString(Settings.PREF_THEME_STYLE, Defaults.PREF_THEME_STYLE));
+        mFretPredictionMode = mIsRcbClassicStyle
+                ? FretPredictions.Mode.Companion.fromPref(prefs.getString(Settings.PREF_FRET_PREDICTIONS, Defaults.PREF_FRET_PREDICTIONS))
+                : FretPredictions.Mode.OFF;
         mOneHandedModeEnabled = !mIsFloatingKeyboard && Settings.readOneHandedModeEnabled(prefs, isLandscape, mIsSplitKeyboardEnabled, isFolded);
         mOneHandedModeGravity = Settings.readOneHandedModeGravity(prefs, isLandscape, mIsSplitKeyboardEnabled, isFolded);
         if (mOneHandedModeEnabled) {

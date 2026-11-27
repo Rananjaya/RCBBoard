@@ -19,6 +19,7 @@ import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.view.WindowMetrics;
 
+import helium314.keyboard.keyboard.FretPredictions;
 import helium314.keyboard.latin.R;
 import helium314.keyboard.latin.settings.SettingsValues;
 
@@ -61,7 +62,8 @@ public final class ResourceUtils {
 
     public static int getSecondaryKeyboardHeight(final Resources res, final SettingsValues settingsValues) {
         final int keyboardHeight = getKeyboardHeight(res, settingsValues);
-        if (settingsValues.mToolbarMode == ToolbarMode.HIDDEN && ! settingsValues.mToolbarHidingGlobal) {
+        if ((settingsValues.mToolbarMode == ToolbarMode.HIDDEN && ! settingsValues.mToolbarHidingGlobal)
+                || FretPredictions.hidesSuggestionStrip(settingsValues.mFretPredictionMode)) {
             // Small adjustment to match the height of the main keyboard which has a hidden strip container.
             return keyboardHeight - (int) res.getDimension(R.dimen.config_suggestions_strip_height);
         }
@@ -89,7 +91,8 @@ public final class ResourceUtils {
             final TypedValue ratio = new TypedValue();
             res.getValue(R.dimen.rcb_classic_keyboard_height_to_width, ratio, true);
             final float fourRows = dm.widthPixels * ratio.getFloat();
-            keyboardHeight = fourRows * (showsNumberRow ? 1.25f : 1f);
+            // plus the black band above the top fret (rcb_classic_keyboard_top_padding), the rows keep their height
+            keyboardHeight = fourRows * (showsNumberRow ? 1.25f : 1f) * RCB_CLASSIC_TOP_BAND_FACTOR;
         } else {
             keyboardHeight = res.getDimension(R.dimen.config_default_keyboard_height) * (showsNumberRow ? 1.33f : 1f);
         }
@@ -107,6 +110,9 @@ public final class ResourceUtils {
         // minKeyboardHeight.
         return (int)Math.max(Math.min(keyboardHeight, maxKeyboardHeight), minKeyboardHeight);
     }
+
+    /** 1 + the black band above the top fret, 6 / 117 of a row pitch over 4 rows */
+    private static final float RCB_CLASSIC_TOP_BAND_FACTOR = 1f + (6f / 117f) / 4f;
 
     /** proportional height only on phones in portrait, like the BlackBerry 10 phones it is modelled on */
     private static boolean isRcbClassicProportionalHeight(final Resources res) {

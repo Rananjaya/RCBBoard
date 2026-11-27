@@ -234,7 +234,9 @@ public final class KeyboardSwitcher {
             @NonNull final SettingsValues settingsValues,
             @NonNull final KeyboardSwitchState toggleState) {
         final int visibility = isImeSuppressedByHardwareKeyboard(settingsValues, toggleState) ? View.GONE : View.VISIBLE;
-        final int stripVisibility = mLatinIME.hasSuggestionStripView()? View.VISIBLE : View.GONE;
+        // RCBBoard: the Fret style shows the predicted words on the keys instead of a strip, like BlackBerry 10
+        final int stripVisibility = mLatinIME.hasSuggestionStripView()
+                && !FretPredictions.hidesSuggestionStrip(settingsValues.mFretPredictionMode) ? View.VISIBLE : View.GONE;
         mStripContainer.setVisibility(stripVisibility);
         PointerTracker.switchTo(mKeyboardView);
         mKeyboardView.setVisibility(visibility);
@@ -756,11 +758,13 @@ public final class KeyboardSwitcher {
 
             // Make {@link MainKeyboardView} visible and hide {@link EmojiPalettesView}.
             SettingsValues currentSettingsValues = Settings.getValues();
+            Keyboard newKeyboard = mKeyboardLayoutSet.getKeyboard(keyboardElement);
+            // RCBBoard: decides whether the Fret style shows the suggestion strip, see setMainKeyboardFrame
+            FretPredictions.updateLayout(newKeyboard);
             setMainKeyboardFrame(currentSettingsValues, toggleState);
             // TODO: pass this object to setKeyboard instead of getting the current values.
             MainKeyboardView keyboardView = mKeyboardView;
             Keyboard oldKeyboard = keyboardView.getKeyboard();
-            Keyboard newKeyboard = mKeyboardLayoutSet.getKeyboard(keyboardElement);
             keyboardView.setKeyboard(newKeyboard);
             mCurrentInputView.setKeyboardTopPadding(newKeyboard.mTopPadding);
             keyboardView.setKeyPreviewPopupEnabled(currentSettingsValues.mKeyPreviewPopupOn);

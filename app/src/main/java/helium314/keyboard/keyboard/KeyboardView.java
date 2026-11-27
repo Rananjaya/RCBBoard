@@ -72,6 +72,8 @@ public class KeyboardView extends View {
     private final boolean mUppercaseLetterLabels;
     /** RCBBoard: main keyboard in RCB Classic style, keys are sized in BlackBerry Z30 proportions, see FretKeyDrawable */
     private final boolean mFretGeometry;
+    /** RCBBoard: draws the BlackBerry 10 style predicted words of the Fret style, null for other styles and views */
+    @Nullable private final FretPredictionRenderer mFretPredictionRenderer;
     /** RCBBoard: grey long-press hints of the Fret style, microphone on period and "hide keyboard" on space */
     @Nullable private final Drawable mFretMicHint;
     @Nullable private final Drawable mFretHideHint;
@@ -121,6 +123,7 @@ public class KeyboardView extends View {
         final TypedArray keyboardViewAttr = context.obtainStyledAttributes(attrs,
                 R.styleable.KeyboardView, defStyle, R.style.KeyboardView);
         mFretGeometry = mUppercaseLetterLabels && this instanceof MainKeyboardView;
+        mFretPredictionRenderer = mFretGeometry ? new FretPredictionRenderer() : null;
         mFretMicHint = mFretGeometry ? ContextCompat.getDrawable(context, R.drawable.ic_rcb_classic_hint_mic) : null;
         mFretHideHint = mFretGeometry ? ContextCompat.getDrawable(context, R.drawable.ic_rcb_classic_hint_hide) : null;
         if (mFretGeometry) // light tiles for letters, space, comma and period, dark for the other functional keys
@@ -262,6 +265,7 @@ public class KeyboardView extends View {
         super.onDraw(canvas);
         if (canvas.isHardwareAccelerated()) {
             onDrawKeyboard(canvas);
+            if (mFretGeometry) drawFretPredictions(canvas);
             return;
         }
 
@@ -275,6 +279,24 @@ public class KeyboardView extends View {
             onDrawKeyboard(mOffscreenCanvas);
         }
         canvas.drawBitmap(mOffscreenBuffer, 0.0f, 0.0f, null);
+        if (mFretGeometry) drawFretPredictions(canvas);
+    }
+
+    /** RCB Classic: BlackBerry 10 style predicted words, see {@link FretPredictionRenderer} */
+    private void drawFretPredictions(@NonNull final Canvas canvas) {
+        final Keyboard keyboard = getKeyboard();
+        if (mFretPredictionRenderer == null || keyboard == null) return;
+        mFretPredictionRenderer.draw(canvas, keyboard, getWidth(), getPaddingLeft(), getPaddingTop());
+    }
+
+    /** RCB Classic: where the flicked [word] is drawn, for its fly-up animation; it is hidden here meanwhile */
+    @Nullable
+    protected FretPredictionRenderer.Snapshot takeFretPredictionSnapshot(@NonNull final String word) {
+        final Keyboard keyboard = getKeyboard();
+        if (mFretPredictionRenderer == null || keyboard == null) return null;
+        final FretPredictionRenderer.Snapshot snapshot = mFretPredictionRenderer.takeSnapshot(word, keyboard.mMostCommonKeyHeight);
+        if (snapshot != null) invalidate();
+        return snapshot;
     }
 
     private boolean maybeAllocateOffscreenBuffer() {

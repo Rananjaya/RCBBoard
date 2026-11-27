@@ -31,6 +31,7 @@ import helium314.keyboard.keyboard.internal.TypingTimeRecorder;
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode;
 import helium314.keyboard.latin.R;
 import helium314.keyboard.latin.common.Constants;
+import helium314.keyboard.latin.suggestions.SuggestedWordInfo;
 import helium314.keyboard.latin.common.CoordinateUtils;
 import helium314.keyboard.latin.common.InputPointers;
 import helium314.keyboard.latin.define.DebugFlags;
@@ -645,6 +646,12 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         }
     }
 
+    /** RCBBoard: predicted word a flick up from the current key accepts in the Fret style, see {@link FretPredictions} */
+    @Nullable
+    private SuggestedWordInfo mFretFlickWord;
+    /** RCBBoard: the stroke went straight up far enough, the word is accepted when the finger is lifted */
+    private boolean mFretFlickArmed;
+
     private void onDownEvent(final int x, final int y, final long eventTime,
             final KeyDetector keyDetector) {
         setKeyDetectorInner(keyDetector);
@@ -706,6 +713,8 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
     }
 
     private void onDownEventInternal(final int x, final int y, final long eventTime) {
+        mFretFlickWord = null;
+        mFretFlickArmed = false;
         Key key = onDownKey(x, y, eventTime);
         // Key selection by dragging finger is allowed when 1) key selection by dragging finger is
         // enabled by configuration, 2) this pointer starts dragging from modifier key, or 3) this
@@ -738,6 +747,9 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
             setPressedKeyGraphics(key, eventTime);
             mStartX = x;
             mStartY = y;
+            mFretFlickWord = (mKeyboard != null && mKeyboard.mId.getElement().isAlphabet() && !key.isModifier()
+                    && !isSwiper(key.getCode()))
+                    ? FretPredictions.wordForTouch(key, x, mKeyboard.mOccupiedWidth) : null;
             mStartTime = SystemClock.elapsedRealtime();
         }
     }
@@ -792,7 +804,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         if (isShowingPopupKeysPanel()) {
             return;
         }
-        if (!sInGesture && key != null && Character.isLetter(key.getCode())
+        if (!sInGesture && key != null && Character.isLetter(key.getCode()) && mFretFlickWord == null
                 && mBatchInputArbiter.mayStartBatchInput(this)) {
             sListener.resetMetaState(); // avoid metaState getting stuck, doesn't work with gesture typing anyway
             sInGesture = true;
@@ -811,6 +823,36 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         }
         if (mIsTrackingForActionDisabled) {
             return;
+        }
+
+        if (mFretFlickWord != null && !sInGesture && !isShowingPopupKeysPanel()) {
+            // RCBBoard: BlackBerry 10 style flick up to accept the predicted word shown above the key.
+            // While the stroke goes straight up it may be a flick: the key stays pressed and gesture typing
+            // records the points but does not start. If the stroke bends, it is no flick and gesture typing
+            // continues with the whole path. The word is accepted when the finger is lifted, see onUpEvent.
+            final int up = mStartY - y;
+            final int sideways = Math.abs(x - mStartX);
+            if (up > 0 && up > 2 * sideways) {
+                if (!mFretFlickArmed && up > mKeyboard.mMostCommonKeyHeight * FRET_FLICK_MIN_DISTANCE) {
+                    mFretFlickArmed = true;
+                    sTimerProxy.cancelLongPressTimersOf(this); // no popup keys panel during a flick
+                    setReleasedKeyGraphics(mCurrentKey, true); // the key preview would cover the word
+                }
+                if (sGestureEnabler.shouldHandleGesture()) {
+                    if (me != null) {
+                        final int pointerIndex = me.findPointerIndex(mPointerId);
+                        for (int h = 0; h < me.getHistorySize(); h++)
+                            onGestureMoveEvent((int) me.getHistoricalX(pointerIndex, h), (int) me.getHistoricalY(pointerIndex, h),
+                                    me.getHistoricalEventTime(h), false, null);
+                    }
+                    onGestureMoveEvent(x, y, eventTime, true, null);
+                }
+                mLastX = x;
+                mLastY = y;
+                return;
+            }
+            mFretFlickWord = null; // moved down or sideways: normal key and gesture handling from here
+            mFretFlickArmed = false;
         }
 
         if (sGestureEnabler.shouldHandleGesture() && me != null) {
@@ -1039,6 +1081,11 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         }
 
         sTimerProxy.cancelUpdateBatchInputTimer(this);
+        if (mFretFlickWord != null && mFretFlickArmed && !sInGesture && !isShowingPopupKeysPanel()
+                && mStartY - y > mKeyboard.mMostCommonKeyHeight * FRET_FLICK_MIN_DISTANCE) {
+            acceptFretFlick(); // the key itself is not typed; gesture typing never started, the next down resets it
+            return;
+        }
         if (!sInGesture) {
             if (mCurrentKey != null && mCurrentKey.isModifier()) {
                 // Before processing an up event of modifier key, all pointers already being
@@ -1065,6 +1112,8 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
     }
 
     private void onUpEventInternal(final int x, final int y, final long eventTime) {
+        mFretFlickWord = null;
+        mFretFlickArmed = false;
         sTimerProxy.cancelKeyTimersOf(this);
         final boolean isInDraggingFinger = mIsInDraggingFinger;
         final boolean isInSlidingKeyInput = mIsInSlidingKeyInput;
@@ -1198,6 +1247,22 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
             mKeySwipeAllowed = false;
             sInKeySwipe = false;
         }
+    }
+
+    /** fraction of the row height a finger must move up for a BlackBerry 10 style flick */
+    private static final float FRET_FLICK_MIN_DISTANCE = 0.4f;
+
+    private void acceptFretFlick() {
+        final SuggestedWordInfo word = mFretFlickWord;
+        final Key key = mCurrentKey;
+        mFretFlickWord = null;
+        mFretFlickArmed = false;
+        if (word == null) return;
+        sTimerProxy.cancelKeyTimersOf(this);
+        mIsDetectingGesture = false;
+        cancelKeyTracking(); // the key itself is not typed
+        if (key != null) sListener.onReleaseKey(key.getCode(), false);
+        FretPredictions.accept(word);
     }
 
     private void cancelKeyTracking() {
