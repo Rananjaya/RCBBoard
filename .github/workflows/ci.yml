@@ -166,3 +166,71 @@ jobs:
           name: debug-build-reports
           path: app/build/reports/
           retention-days: 14
+
+  release-smoke-test:
+    name: Release smoke test
+    # Runs the minified, obfuscated and resource-shrunk release APK on an emulator: R8 problems only
+    # show at runtime (5.1.2 crashed when the keyboard started). Signed with a throwaway key; the
+    # Release workflow runs the same test again on the production-signed APK before publishing.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: ${{ env.ANDROID_PACKAGES }}
+          log-accepted-android-sdk-licenses: false
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-provider: basic
+
+      - name: Build minified release APK
+        # same Gradle task and properties as release.yml
+        run: ./gradlew :app:assembleRelease -PrcbboardGlideTyping=false
+
+      - name: Sign with a throwaway key
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/smoke.jks" -storepass smoketest -keypass smoketest \
+            -alias smoke -keyalg RSA -keysize 2048 -validity 1 -dname "CN=RCBBoard smoke test"
+          apk="$(find app/build/outputs/apk/release -name '*.apk' | head -n 1)"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --ks "$RUNNER_TEMP/smoke.jks" \
+            --ks-pass pass:smoketest --key-pass pass:smoketest --out "$RUNNER_TEMP/rcbboard-smoke.apk" "$apk"
+          rm -f "$RUNNER_TEMP/smoke.jks"
+
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the release APK on an emulator
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: python3 .github/scripts/release_smoke_test.py --apk "$RUNNER_TEMP/rcbboard-smoke.apk" --package com.rananjaya.rcbboard --out-dir "$RUNNER_TEMP/release-smoke"
+
+      - name: Upload smoke test screenshots and log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-smoke-test
+          path: ${{ runner.temp }}/release-smoke/
+          if-no-files-found: ignore
+          retention-days: 14
