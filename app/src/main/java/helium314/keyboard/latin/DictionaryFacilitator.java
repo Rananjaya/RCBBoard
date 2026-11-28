@@ -126,6 +126,9 @@ public interface DictionaryFacilitator {
     /** completely removes the word from user history (currently not if event is a backspace event) */
     void unlearnFromUserHistory(String word, @NonNull NgramContext ngramContext, long timeStampInSeconds, UnlearnEvent event);
 
+    /** RCBBoard: the user deliberately kept [word] as typed, so it is learned at once even if no dictionary knows it */
+    default void markAccepted(String word) {}
+
     @NonNull SuggestionResults getSuggestionResults(ComposedData composedData,
             NgramContext ngramContext, @NonNull Keyboard keyboard,
             SettingsValuesForSuggestion settingsValuesForSuggestion, int sessionId,

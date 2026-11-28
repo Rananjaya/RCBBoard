@@ -328,6 +328,9 @@ public final class InputLogic {
             }
         }
         mJustRevertedACommit = false;
+        // RCBBoard: picking exactly the typed word keeps a word the dictionary may not know: learn it at once
+        if (!mWordComposer.isBatchMode() && suggestion.equals(mWordComposer.getTypedWord()))
+            mDictionaryFacilitator.markAccepted(suggestion);
 
         // TODO: We should not need the following branch. We should be able to take the same
         // code path as for other kinds, use commitChosenWord, and do everything normally. We will

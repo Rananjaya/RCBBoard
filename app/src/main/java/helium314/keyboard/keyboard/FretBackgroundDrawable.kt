@@ -15,13 +15,14 @@ import helium314.keyboard.latin.R
 /**
  * RCBBoard: background of the main keyboard in the Fret (RCB Classic) style.
  * Black, with one metal fret across the full width at the top of every key row, like the BlackBerry Z30
- * keyboard. The fret is 12/117 of the row pitch thick and uses the colour profile sampled from the
- * reference: a 2 px white highlight, a warm grey body and a lighter lower lip. It is uniform across the
- * width, like on the original. Original drawing code, no BlackBerry assets.
+ * keyboard. 12/117 of the row pitch thick, as on the Z30 reference; owner's design for the profile: a metal bar
+ * with dark edges at top and bottom, a bright highlight and a grey body between, darkening towards both ends.
+ * Original drawing code, no BlackBerry assets.
  */
 class FretBackgroundDrawable(res: Resources, private val rowTops: IntArray) : Drawable() {
     private val background = ResourcesCompat.getColor(res, R.color.rcb_classic_background, null)
     private val paint = Paint()
+    private val endsPaint = Paint()
 
     override fun draw(canvas: Canvas) {
         val b = bounds
@@ -37,6 +38,9 @@ class FretBackgroundDrawable(res: Resources, private val rowTops: IntArray) : Dr
             val bottom = top + pitch * FRET_HEIGHT
             paint.shader = LinearGradient(0f, top, 0f, bottom, PROFILE, POSITIONS, Shader.TileMode.CLAMP)
             canvas.drawRect(b.left.toFloat(), top, b.right.toFloat(), bottom, paint)
+            // dark metal shading towards the left and right ends of the bar
+            endsPaint.shader = LinearGradient(b.left.toFloat(), 0f, b.right.toFloat(), 0f, ENDS, ENDS_POSITIONS, Shader.TileMode.CLAMP)
+            canvas.drawRect(b.left.toFloat(), top, b.right.toFloat(), bottom, endsPaint)
         }
     }
 
@@ -48,11 +52,14 @@ class FretBackgroundDrawable(res: Resources, private val rowTops: IntArray) : Dr
     companion object {
         /** 12 px of a 117 px row pitch on the Z30 reference */
         const val FRET_HEIGHT = 12f / 117f
-        // the 12 rows of the reference fret, top to bottom
+        // metal bar, top to bottom: dark edge, bright highlight, grey body, lighter lip, dark edge
         private val PROFILE = intArrayOf(
-            0xFFFEFFFF.toInt(), 0xFFEDEDEB.toInt(), 0xFF989894.toInt(), 0xFF918E8A.toInt(), 0xFF8D8882.toInt(),
-            0xFF8A857F.toInt(), 0xFF84817C.toInt(), 0xFF999692.toInt(), 0xFF959591.toInt(),
+            0xFF3C3B39.toInt(), 0xFFF4F4F2.toInt(), 0xFFC4C2BE.toInt(), 0xFF8E8A85.toInt(),
+            0xFF9F9C97.toInt(), 0xFF64615D.toInt(), 0xFF2E2D2B.toInt(),
         )
-        private val POSITIONS = floatArrayOf(0f, 1f / 12, 2f / 12, 3f / 12, 5f / 12, 8f / 12, 9f / 12, 10f / 12, 1f)
+        private val POSITIONS = floatArrayOf(0f, 0.16f, 0.32f, 0.55f, 0.72f, 0.88f, 1f)
+        // left and right ends: darkened over the outer 7 % of the width, clear in the middle
+        private val ENDS = intArrayOf(0xC0000000.toInt(), 0x00000000, 0x00000000, 0xC0000000.toInt())
+        private val ENDS_POSITIONS = floatArrayOf(0f, 0.07f, 0.93f, 1f)
     }
 }

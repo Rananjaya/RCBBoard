@@ -48,6 +48,9 @@ val syncThirdPartyLicenses = tasks.register<SyncThirdPartyLicensesTask>("syncThi
 
 android {
     compileSdk = 37
+    // the minified debug build can't run instrumented tests; the prediction benchmark uses
+    // -PrcbboardTestBuildType=debugNoMinify (docs/prediction/benchmark-plan.md)
+    testBuildType = providers.gradleProperty("rcbboardTestBuildType").orNull ?: "debug"
 
     defaultConfig {
         applicationId = "com.rananjaya.rcbboard"
@@ -68,6 +71,8 @@ android {
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
         }
         proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        // only for the on-device English prediction benchmark in src/androidTest (docs/prediction/benchmark-plan.md)
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -198,4 +203,7 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.16.1")
     testImplementation("androidx.test:runner:1.7.0")
     testImplementation("androidx.test:core:1.7.0")
+    // on-device prediction benchmark (src/androidTest), same libraries as the unit tests; not in the app
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("junit:junit:4.13.2")
 }

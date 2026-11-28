@@ -992,6 +992,8 @@ public class LatinIME extends InputMethodService implements
     void onFinishInputViewInternal(final boolean finishingInput) {
         super.onFinishInputView(finishingInput);
         Log.i(TAG, "onFinishInputView");
+        // RCBBoard: the keyboard was hidden: save what was learned (writes only if something changed)
+        mDictionaryFacilitator.onFinishInput();
         cleanupInternalStateForFinishInput();
     }
 

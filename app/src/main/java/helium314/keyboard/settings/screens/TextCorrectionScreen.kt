@@ -39,6 +39,7 @@ import helium314.keyboard.settings.dialogs.ConfirmationDialog
 import helium314.keyboard.settings.initPreview
 import helium314.keyboard.settings.preferences.Preference
 import helium314.keyboard.settings.preferences.SwitchPreference
+import helium314.keyboard.latin.dictionary.history.LearnedWords
 import helium314.keyboard.settings.preferences.SwitchPreferenceWithEmojiDictWarning
 import helium314.keyboard.latin.utils.previewDark
 import androidx.core.content.edit
@@ -201,7 +202,17 @@ fun createCorrectionSettings(context: Context) = listOf(
         R.string.use_personalized_dicts, R.string.use_personalized_dicts_summary
     ) { setting ->
         var showConfirmDialog by rememberSaveable { mutableStateOf(false) }
-        SwitchPreference(setting, Defaults.PREF_KEY_USE_PERSONALIZED_DICTS,
+        val ctx = LocalContext.current
+        // RCBBoard: a small counter of the learned words under the summary
+        val learned = remember { LearnedWords.count(ctx) }
+        val learning = ctx.prefs().getBoolean(setting.key, Defaults.PREF_KEY_USE_PERSONALIZED_DICTS)
+        SwitchPreference(
+            name = setting.title,
+            key = setting.key,
+            default = Defaults.PREF_KEY_USE_PERSONALIZED_DICTS,
+            description = if (learning && learned > 0)
+                setting.description + "\n" + ctx.resources.getQuantityString(R.plurals.learned_words_count, learned, learned)
+            else setting.description,
             allowCheckedChange = {
                 showConfirmDialog = !it
                 it

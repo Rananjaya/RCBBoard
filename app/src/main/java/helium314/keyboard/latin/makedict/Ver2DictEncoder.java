@@ -227,8 +227,10 @@ public class Ver2DictEncoder implements DictEncoder {
         writeCharacters(ptNode.mChars, ptNode.hasSeveralChars(), codePointToOneByteCodeMap);
         writeFrequency(ptNode.getProbability());
         writeChildrenPosition(ptNode, codePointToOneByteCodeMap);
-        writeBigrams(ptNode.mBigrams, dict);
+        // shortcuts before bigrams: that is the order the native reader expects (PatriciaTrieReadingUtils::
+        // readPtNodeInfo) and the order BinaryDictEncoderUtils uses to compute sizes and bigram offsets
         writeShortcuts(ptNode.mShortcutTargets, codePointToOneByteCodeMap);
+        writeBigrams(ptNode.mBigrams, dict);
     }
 
     private void writeShortcuts(ArrayList<WeightedString> shortcuts, HashMap<Integer, Integer> codePointToOneByteCodeMap) {

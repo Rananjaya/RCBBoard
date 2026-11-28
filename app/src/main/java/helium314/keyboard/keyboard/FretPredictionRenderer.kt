@@ -127,11 +127,16 @@ class FretPredictionRenderer {
             val baseline = centerY + capHeight / 2f
             val half = capHeight * 0.85f
             rect.set(x - pad, centerY - half, x + width + pad, centerY + half)
-            backingPaint.color = BACKING
-            backingPaint.alpha = BACKING_ALPHA * alpha / 255
-            canvas.drawRoundRect(rect, pad, pad, backingPaint)
             textPaint.typeface = KeyboardTypeface.resolve(word, Typeface.DEFAULT)
             textPaint.textScaleX = scaleX
+            // no box behind the word (owner's request): a thin dark outline keeps it readable on the bright fret
+            backingPaint.set(textPaint)
+            backingPaint.style = Paint.Style.STROKE
+            backingPaint.strokeWidth = capHeight * 0.22f
+            backingPaint.strokeJoin = Paint.Join.ROUND
+            backingPaint.color = BACKING
+            backingPaint.alpha = alpha
+            canvas.drawText(word, x, baseline, backingPaint)
             textPaint.color = TYPED
             textPaint.alpha = alpha
             canvas.drawText(word, 0, prefixLength, x, baseline, textPaint)
@@ -173,6 +178,5 @@ class FretPredictionRenderer {
         private const val TYPED = 0xFFFFFFFF.toInt()
         private const val REST = 0xFFC4C4C4.toInt()
         private const val BACKING = 0xFF000000.toInt()
-        private const val BACKING_ALPHA = 0xC0
     }
 }

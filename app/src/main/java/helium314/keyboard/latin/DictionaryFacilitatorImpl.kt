@@ -48,6 +48,7 @@ import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -78,7 +79,25 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
      * todo: ideally the native library would allow reverting recent additions
      */
     private val wordsWaitingForHistory = hashMapOf<String, Job>()
-    private val unlearnDuration = 25.seconds
+    // RCBBoard: a typed word is learned (in memory) 1.5 s after it is committed, unless it is corrected before. A word
+    // the dictionaries don't know that is corrected later is removed again (recentlyLearnedUnknown), and unknown words
+    // still need two uses to be suggested (native forgetting curve). See docs/prediction/M7-learning-and-ranking.md
+    private val unlearnDuration = 1500.milliseconds
+    // RCBBoard: learned words are written to disk at most this long after learning, at most once per this period
+    // (throttled, so typing never causes more writes), and also when the keyboard is hidden or the field is left
+    private val historySaveDelay = 3.seconds
+    private var historySaveJob: Job? = null
+    /** words the user deliberately kept as typed (InputLogic), learned at once and as valid words */
+    private val acceptedWords = HashSet<String>()
+    /** unknown words learned recently, with the time, so a later correction can remove them again */
+    private val recentlyLearnedUnknown = LinkedHashMap<String, Long>()
+
+    override fun markAccepted(word: String) {
+        synchronized(acceptedWords) {
+            if (acceptedWords.size > 20) acceptedWords.clear()
+            acceptedWords.add(word)
+        }
+    }
 
     private val scope = CoroutineScope(Dispatchers.Default)
 
@@ -337,7 +356,10 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
             .maxByOrNull { it.confidence }
     }
 
-    private fun determineWordToUse(word: String, wasAutoCapitalizedOrIsBeginningOfSentence: Boolean, dictionaryGroup: DictionaryGroup): String? {
+    private fun determineWordToUse(
+        word: String, wasAutoCapitalizedOrIsBeginningOfSentence: Boolean, wasAutoCapitalized: Boolean,
+        dictionaryGroup: DictionaryGroup
+    ): String? {
         // Check for isBeginningOfSentenceContext too, because not all text fields auto-capitalize in this case.
         // Even if the user capitalizes manually, they most likely don't want the capitalized form suggested.
         if (wasAutoCapitalizedOrIsBeginningOfSentence && Character.isUpperCase(word.codePointAt(0))) {
@@ -364,6 +386,9 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
                 val decapitalizedInHistory = histDict.isInDictionary(decapitalizedWord)
                 if (wordInHistory && !decapitalizedInHistory) return word
                 else if (!wordInHistory && decapitalizedInHistory) return decapitalizedWord
+                // RCBBoard: a new word the user capitalised at the start of a sentence (not the keyboard's automatic
+                // capital), for example a name, is learned as typed instead of not at all
+                if (!wasAutoCapitalized && !wordValid && !decapitalizedValid) return word
             }
             return null // can't determine reliably enough, better add nothing (wasAutoCapitalizedOrIsBeginningOfSentence is unusual anyway)
         } else {
@@ -399,16 +424,19 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
         val wordToUse = determineWordToUse(
             word,
             wasAutoCapitalized || ngramContext.isBeginningOfSentenceContext,
+            wasAutoCapitalized,
             dictionaryGroup
         ) ?: return
 
         // We demote unrecognized words (frequency <= 0) by specifying them as "invalid".
         // We don't add words with 0-frequency (assuming they would be profanity etc.).
-        val isValid = mainFreq > 0
+        // RCBBoard: unless the user explicitly kept the word as typed
+        val accepted = synchronized(acceptedWords) { acceptedWords.remove(word) }
+        val isValid = mainFreq > 0 || accepted
 
         var addJob: Job? = null
         addJob = scope.launch(Dispatchers.IO) {
-            delay(unlearnDuration)
+            if (!accepted) delay(unlearnDuration)
             synchronized(wordsWaitingForHistory) {
                 if (wordsWaitingForHistory[word] == addJob)
                     wordsWaitingForHistory.remove(word)
@@ -419,9 +447,26 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
             }
 
             UserHistoryDictionary.addToDictionary(userHistoryDictionary, ngramContext, wordToUse, isValid, timeStampInSeconds)
+            if (!isValid) synchronized(recentlyLearnedUnknown) {
+                recentlyLearnedUnknown.remove(word)
+                recentlyLearnedUnknown[word] = System.currentTimeMillis()
+                if (recentlyLearnedUnknown.size > 50) recentlyLearnedUnknown.remove(recentlyLearnedUnknown.keys.first())
+            }
+            scheduleHistorySave(userHistoryDictionary)
         }
         // we use the original word, because that's the one that is "unlearned" when the user corrects the word
         synchronized(wordsWaitingForHistory) { wordsWaitingForHistory[word] = addJob }
+    }
+
+    /** saves the learned words of [dictionary] within [historySaveDelay]; a save already waiting covers new words too */
+    private fun scheduleHistorySave(dictionary: Dictionary) {
+        synchronized(this) {
+            if (historySaveJob?.isActive == true) return
+            historySaveJob = scope.launch {
+                delay(historySaveDelay)
+                dictionary.onFinishInput() // writes pending changes to the file, like when leaving a text field
+            }
+        }
     }
 
     private fun addToPersonalDictionaryIfInvalidButInHistory(word: String) {
@@ -494,8 +539,16 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
 
     override fun unlearnFromUserHistory(word: String, ngramContext: NgramContext,
                     timeStampInSeconds: Long, event: DictionaryFacilitator.UnlearnEvent) {
-        val job = synchronized(wordsWaitingForHistory) { wordsWaitingForHistory.remove(word) } ?: return
-        job.cancel()
+        val job = synchronized(wordsWaitingForHistory) { wordsWaitingForHistory.remove(word) }
+        if (job != null && job.isActive) {
+            job.cancel()
+            return
+        }
+        // RCBBoard: already learned, but unknown to the dictionaries and learned in the last minute: the user is
+        // correcting a typo, so it must not stay half learned (one more use would make it a suggestion)
+        val learnedAt = synchronized(recentlyLearnedUnknown) { recentlyLearnedUnknown.remove(word) } ?: return
+        if (System.currentTimeMillis() - learnedAt > 60_000) return
+        dictionaryGroups.forEach { it.getSubDict(Dictionary.TYPE_USER_HISTORY)?.removeUnigramEntryDynamically(word) }
     }
 
     // TODO: Revise the way to fusion suggestion results.

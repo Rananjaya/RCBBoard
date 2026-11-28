@@ -41,6 +41,8 @@ object DictionaryFactory {
             val extractedFile = DictionaryInfoUtils.extractAssetsDictionary(filename, locale, context) ?: return@forEach
             checkAndAddDictionaryToListIfNewType(extractedFile, dictList, locale)
         }
+        // RCBBoard: English trigram next-word predictions, merged with the main dictionary's by score
+        PhraseDictionary.create(context, locale)?.let { dictList.add(it) }
         return dictList
     }
 

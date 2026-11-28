@@ -64,6 +64,34 @@ class DictionaryTest {
         File(tempFile).delete()
     }
 
+    // the bundled English dictionaries have words with shortcuts and bigrams: the encoder must not fail on them
+    // ("Increased size ?!") and must write the shortcut list before the bigrams, as the native reader expects
+    @Test fun writeWordWithShortcutAndBigram() {
+        val input = File.createTempFile("shortcut_bigram", ".combined")
+        input.writeText("""
+            dictionary=main:en_gb,locale=en_GB,description=test,date=1,version=1
+             word=a,f=100
+              shortcut=b,f=whitelist
+              bigram=c,f=200
+             word=b,f=90
+             word=c,f=80
+        """.trimIndent() + "\n")
+        val output = File.createTempFile("shortcut_bigram", ".dict")
+        DictIO.writeBinaryDictionary(output.absolutePath, DictIO.readCombinedDictionary(input.absolutePath))
+        val bytes = output.readBytes()
+        val headerSize = java.nio.ByteBuffer.wrap(bytes, 8, 4).int
+        var pos = headerSize + 1 // root PtNode array: one byte for its size, then the PtNode of "a"
+        val flags = bytes[pos].toInt() and 0xFF
+        assertTrue(flags and 0x08 != 0 && flags and 0x04 != 0, "a should have shortcuts and bigrams, flags $flags")
+        pos += 3 // flags, character, frequency (no children)
+        // shortcut list first: its size is a 2-byte number (small, so the first byte is 0); a bigram would start
+        // with a flags byte that has address type bits set
+        assertEquals(0, bytes[pos].toInt(), "shortcut list size expected before the bigrams")
+        assertTrue(bytes[pos + 1] > 2)
+        input.delete()
+        output.delete()
+    }
+
     @Test fun readCombinedOutput() {
         val dict = DictIO.readCombinedDictionary("src/test/resources/somelist.combined")
         val tempFile = File("src/test/resources/somelist.temp")
