@@ -137,6 +137,26 @@ The APK contains verbatim copies of those two files at `assets/third_party_licen
 
 Including this dictionary does not mean that Laknath Semage, Buddhika Laknath, or the other contributors to that repository endorse RCBBoard.
 
+## English dictionaries and next-word data
+
+`assets/dicts/main_en-GB.dict` and `assets/dicts/main_en-US.dict` keep every word, frequency, shortcut and flag of
+the English dictionaries RCBBoard inherited from HeliBoard, which come from the AOSP keyboard (Apache License 2.0,
+see `LICENSE-Apache-2.0` in the repository root). The bigrams already in the AOSP English (US) dictionary are kept
+in both.
+
+Their next-word data (bigrams: which word often follows another) was added for RCBBoard. It is counted from
+English sentences of **Tatoeba** (https://tatoeba.org), by the Tatoeba contributors, licensed under Creative
+Commons Attribution 2.0 France (CC BY 2.0 FR, https://creativecommons.org/licenses/by/2.0/fr/). The sentences
+themselves are not included: the dictionaries contain only word pair statistics derived from them, and the data
+was changed (counted, filtered and converted to dictionary frequencies). File used: `eng_sentences.tsv.bz2` from
+https://downloads.tatoeba.org/exports/per_language/eng/, downloaded on 28 November 2026,
+SHA-256 `00e8f4618f4eadc799a55956af237ed70fdcbd7163151c81711971d71ef40302`. Mentioning Tatoeba does not mean that
+Tatoeba or its contributors endorse RCBBoard.
+
+The prediction benchmark of the source repository (`app/src/androidTest/assets/benchmark/`, not part of the app)
+contains held-out Tatoeba sentences under the same licence. How the dictionaries are rebuilt is in
+`tools/english-dictionaries/README.md`.
+
 ## Sinhala (Wijesekara) keyboard layout
 
 `assets/layouts/main/sinhala_wijesekara.json` was written for RCBBoard and is licensed with the app under GPL-3.0. It contains no code or data copied from other projects. Its key positions follow the Wijesekara keyboard standard (SLS 1134). They were checked against these references, which were only read, not copied:

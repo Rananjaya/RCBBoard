@@ -106,6 +106,9 @@ public class BinaryDictEncoderUtils {
             size += FormatSpec.PTNODE_FREQUENCY_SIZE;
         }
         size += FormatSpec.PTNODE_MAX_ADDRESS_SIZE; // For children address
+        // the shortcut list is part of the PtNode too (computeActualPtNodeArraySize counts it): without it, a word
+        // with shortcuts and bigrams can end up larger than its "maximum" size, and encoding fails
+        size += getShortcutListSize(ptNode.mShortcutTargets, null);
         if (null != ptNode.mBigrams) {
             size += (FormatSpec.PTNODE_ATTRIBUTE_FLAGS_SIZE
                 + FormatSpec.PTNODE_ATTRIBUTE_MAX_ADDRESS_SIZE)
