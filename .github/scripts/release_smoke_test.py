@@ -106,6 +106,11 @@ class Device:
 
 
 def check_alive(device: Device, package: str, step: str) -> None:
+    # right after boot, the system can take a while to start the keyboard process: wait for it,
+    # then look for crashes, so a process that started late and crashed is still caught
+    deadline = time.time() + 30
+    while not device.shell(f"pidof {package}", check=False).strip() and time.time() < deadline:
+        time.sleep(2)
     log = device.run("logcat", "-d", "-v", "brief", timeout=60)
     crashes = [block for block in log.split("FATAL EXCEPTION")[1:] if f"Process: {package}," in block[:300]]
     anrs = [line for line in log.splitlines() if f"ANR in {package}" in line]
@@ -114,6 +119,7 @@ def check_alive(device: Device, package: str, step: str) -> None:
         detail = ("FATAL EXCEPTION" + crashes[0][:3000]) if crashes else anrs[0]
         raise SmokeTestError(f"{package} crashed or stopped responding ({step}):\n{detail}")
     if not device.shell(f"pidof {package}", check=False).strip():
+        (device.out_dir / "logcat.txt").write_text(log, encoding="utf-8")
         raise SmokeTestError(f"{package} is not running ({step})")
 
 
