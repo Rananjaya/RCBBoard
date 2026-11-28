@@ -1,7 +1,8 @@
 # English dictionaries
 
-Rebuilds `app/src/main/assets/dicts/main_en-GB.dict` and `main_en-US.dict` with next-word (bigram) data, and the
-held-out sets of the prediction benchmark. Only English is built here; the Sinhala dictionary is never touched.
+Rebuilds `app/src/main/assets/dicts/main_en-GB.dict` and `main_en-US.dict` with next-word (bigram) data, the
+phrase files `app/src/main/assets/phrases/en-GB.phrases` and `en-US.phrases` (trigrams: the next word after two
+words), and the held-out sets of the prediction benchmark. Only English is built here; the Sinhala dictionary is never touched.
 Licences and attribution: `licenses/THIRD_PARTY_NOTICES.md` ("English dictionaries and next-word data").
 
 ## Inputs
@@ -32,6 +33,18 @@ RCBBOARD_COMPILE_DICTS="/tmp/en-new/main_en-GB.combined=app/src/main/assets/dict
   -Pandroid.onlyEnableUnitTestForTheTestedBuildType=false --tests 'helium314.keyboard.tools.CompileDictionaryTool'
 ```
 
+```sh
+# 4. phrase files (trigrams), from the M2 dictionaries: tune once on development data, then build
+python3 tools/english-dictionaries/build_english_trigrams.py --corpus eng_sentences.tsv \
+  --dicts app/src/main/assets/dicts --tune            # prints accuracy and size per pruning setting
+python3 tools/english-dictionaries/build_english_trigrams.py --corpus eng_sentences.tsv \
+  --dicts app/src/main/assets/dicts --out app/src/main/assets/phrases --min-count 3 --per-context 8 --bonus 12
+
+# 5. independent test set from two public domain books (Project Gutenberg #1342 and #1661, plain text)
+python3 tools/english-dictionaries/build_independent_benchmark.py --books pg1342.txt pg1661.txt \
+  --dicts app/src/main/assets/dicts --bench app/src/androidTest/assets/benchmark
+```
+
 Unit tests need JDK 21 or newer (for example Android Studio's JBR as `JAVA_HOME`).
 
 ## What the build does
@@ -45,6 +58,18 @@ Unit tests need JDK 21 or newer (for example Android Studio's JBR as `JAVA_HOME`
   marked possibly offensive.
 - Writes the probability on the dictionary's own scale: 255 is certain, and each factor of ten less costs as many
   points as it does for single words in that dictionary (fitted, about 20).
+
+## Phrase files
+
+- Counted from Tatoeba buckets 10-99 (the benchmark's test sentences, buckets 0-9, are never read). With `--tune`,
+  buckets 10-14 are held back as development data to choose the pruning; the final files include them.
+- A phrase is kept when it was seen at least 3 times, with at most 8 next words per two-word context and a
+  probability of at least 2 %. Probabilities use absolute discounting (a count c counts as c - 0.5).
+- Scores use the dictionary's scale (see above) plus 12 points, because two words of context are more specific
+  than one; the dictionary's bigrams then serve as the back-off for contexts the phrase file does not know.
+- Same word rules as the bigrams: no names, offensive words or single letters; British spellings in en-GB.
+- Format: see `PhraseDictionary.kt`. Lookups are binary searches in the file loaded into memory (about 2.7 MB per
+  English locale), only for next-word predictions.
 
 ## Checks
 

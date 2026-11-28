@@ -153,8 +153,14 @@ https://downloads.tatoeba.org/exports/per_language/eng/, downloaded on 28 Novemb
 SHA-256 `00e8f4618f4eadc799a55956af237ed70fdcbd7163151c81711971d71ef40302`. Mentioning Tatoeba does not mean that
 Tatoeba or its contributors endorse RCBBoard.
 
+The phrase files `assets/phrases/en-GB.phrases` and `assets/phrases/en-US.phrases` (which words often follow two
+given words) are counted from the same Tatoeba sentences, under the same licence and attribution, and contain only
+statistics, not sentences.
+
 The prediction benchmark of the source repository (`app/src/androidTest/assets/benchmark/`, not part of the app)
-contains held-out Tatoeba sentences under the same licence. How the dictionaries are rebuilt is in
+contains held-out Tatoeba sentences under the same licence, and word sequences from two public domain books of
+Project Gutenberg (#1342 Pride and Prejudice by Jane Austen and #1661 The Adventures of Sherlock Holmes by Arthur
+Conan Doyle, https://www.gutenberg.org), used without the Project Gutenberg name or licence text. How the dictionaries are rebuilt is in
 `tools/english-dictionaries/README.md`.
 
 ## Sinhala (Wijesekara) keyboard layout

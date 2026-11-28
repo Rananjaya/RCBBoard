@@ -18,6 +18,7 @@ import helium314.keyboard.latin.NgramContext
 import helium314.keyboard.latin.RichInputMethodSubtype
 import helium314.keyboard.latin.WordComposer
 import helium314.keyboard.event.Event
+import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.settings.SettingsValuesForSuggestion
 import helium314.keyboard.latin.suggestions.SuggestedWords
@@ -57,7 +58,7 @@ class EnglishPredictionBenchmark {
     private val settingsForSuggestion = SettingsValuesForSuggestion(true, false)
     private var sequence = 0
 
-    private fun setUp(): Long {
+    private fun setUp(personalized: Boolean = false): Long {
         SubtypeSettings.init(context)
         Settings.init(context)
         val editorInfo = EditorInfo().apply { inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_CORRECT }
@@ -72,7 +73,7 @@ class EnglishPredictionBenchmark {
         }
         facilitator = DictionaryFacilitatorProvider.getDictionaryFacilitator(false)
         val start = System.nanoTime()
-        facilitator.resetDictionaries(context, locale, false, false, false, true, "benchmark", null)
+        facilitator.resetDictionaries(context, locale, false, false, personalized, true, "benchmark", null)
         facilitator.waitForLoadingMainDictionaries(60, TimeUnit.SECONDS)
         val loadMillis = (System.nanoTime() - start) / 1_000_000
         suggest = Suggest(facilitator).apply { setAutoCorrectionThreshold(Settings.getValues().mAutoCorrectionThreshold) }
@@ -110,6 +111,11 @@ class EnglishPredictionBenchmark {
     private fun type(word: String, random: Random?): WordComposer {
         val composer = WordComposer()
         word.forEach { c ->
+            if (!Character.isLetter(c)) { // like typing them from the symbols keyboard: no proximity correction
+                val event = Event.createSoftwareKeypressEvent(c.code, 0, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false)
+                composer.applyProcessedEvent(composer.processEvent(event))
+                return@forEach
+            }
             val (cx, cy) = keyCentre(c.code) ?: (0f to 0f)
             var x = cx
             var y = cy
@@ -128,6 +134,24 @@ class EnglishPredictionBenchmark {
         return composer
     }
 
+    private fun nextWord(file: String, timings: MutableList<Long>?): JSONObject {
+        var top1 = 0; var top3 = 0; var top5 = 0; var reciprocal = 0.0; var withAny = 0
+        val cases = lines(file)
+        cases.forEach { line ->
+            val (contextText, expected) = line.split("\t")
+            val predicted = predictions(contextText.split(" "), timings)
+            if (predicted.isNotEmpty()) withAny++
+            val rank = predicted.indexOfFirst { it.equals(expected, ignoreCase = true) }
+            if (rank == 0) top1++
+            if (rank in 0..2) top3++
+            if (rank in 0..4) top5++
+            if (rank >= 0) reciprocal += 1.0 / (rank + 1)
+        }
+        val n = cases.size.toDouble()
+        return JSONObject().put("cases", cases.size).put("top1", top1 / n).put("top3", top3 / n).put("top5", top5 / n)
+            .put("mrr", reciprocal / n).put("contexts_with_predictions", withAny / n)
+    }
+
     private fun percentile(values: List<Long>, p: Double): Double {
         if (values.isEmpty()) return 0.0
         val sorted = values.sorted()
@@ -140,26 +164,13 @@ class EnglishPredictionBenchmark {
             .put("emulator", android.os.Build.FINGERPRINT.contains("generic") || android.os.Build.HARDWARE.contains("ranchu"))
             .put("dictionary_load_ms", loadMillis)
 
-        // 1. next word on a fresh install
+        // 1. next word on a fresh install: Tatoeba held-out sentences, and independent public domain books
         val nextTimings = ArrayList<Long>()
         val firstCall = ArrayList<Long>()
         predictions(listOf("the"), firstCall)
-        var top1 = 0; var top3 = 0; var top5 = 0; var reciprocal = 0.0; var withAny = 0
-        val nextWord = lines("next_word.tsv")
-        nextWord.forEach { line ->
-            val (contextText, expected) = line.split("\t")
-            val predicted = predictions(contextText.split(" "), nextTimings)
-            if (predicted.isNotEmpty()) withAny++
-            val rank = predicted.indexOfFirst { it.equals(expected, ignoreCase = true) }
-            if (rank == 0) top1++
-            if (rank in 0..2) top3++
-            if (rank in 0..4) top5++
-            if (rank >= 0) reciprocal += 1.0 / (rank + 1)
-        }
-        val n = nextWord.size.toDouble()
-        result.put("next_word", JSONObject().put("cases", nextWord.size)
-            .put("top1", top1 / n).put("top3", top3 / n).put("top5", top5 / n).put("mrr", reciprocal / n)
-            .put("contexts_with_predictions", withAny / n))
+        result.put("next_word", nextWord("next_word.tsv", nextTimings))
+        if (testAssets.list("benchmark/$localeTag")?.contains("independent_next_word.tsv") == true)
+            result.put("next_word_independent", nextWord("independent_next_word.tsv", null))
 
         // 2. typing with noisy taps: autocorrection accuracy and wrong corrections
         val random = Random(SEED)
@@ -219,6 +230,17 @@ class EnglishPredictionBenchmark {
         }
         result.put("typo_examples", corrections)
 
+        // 4b. words typed exactly that must stay as typed: rare words, names, technical terms, spellings, addresses
+        val changed = JSONObject()
+        var safetyCases = 0
+        (MUST_STAY + if (localeTag == "en-GB") MUST_STAY_UK else MUST_STAY_US).forEach { word ->
+            safetyCases++
+            val r = suggestions(type(word, null), listOf("the"), null)
+            val committed = if (r.willAutoCorrect) r.getOrNull(SuggestedWords.INDEX_OF_AUTO_CORRECTION)?.word else null
+            if (committed != null && !committed.equals(word, ignoreCase = true)) changed.put(word, committed)
+        }
+        result.put("must_stay", JSONObject().put("cases", safetyCases).put("changed_count", changed.length()).put("changed", changed))
+
         // 5. latency and memory (on this device only)
         val memory = Debug.MemoryInfo().also { Debug.getMemoryInfo(it) }
         result.put("latency_ms", JSONObject()
@@ -238,6 +260,34 @@ class EnglishPredictionBenchmark {
         facilitator.closeDictionaries()
     }
 
+    /**
+     * A phrase the user types must be able to come before the bundled predictions. Teaches "see you <word>" through
+     * the normal learning path (DictionaryFacilitator.addToUserHistory, written after its 25 s delay) and records the
+     * rank of <word> after each use. Uses its own history file ("benchmark" prefix), deleted at the end.
+     */
+    @Test fun personalPhrasesComeFirst() {
+        setUp(personalized = true)
+        facilitator.clearUserHistoryDictionary(context)
+        val words = listOf("see", "you")
+        val bundled = predictions(words, null)
+        val target = listOf("there", "again", "outside", "next", "home").first { it !in bundled.take(3) }
+        val result = JSONObject().put("locale", localeTag).put("bundled_top5", bundled.take(5).joinToString(", "))
+            .put("taught_word", target)
+        for (uses in 1..4) {
+            val now = System.currentTimeMillis() / 1000
+            facilitator.addToUserHistory("see", false, NgramContext.BEGINNING_OF_SENTENCE, now, true)
+            facilitator.addToUserHistory("you", false, context(listOf("see")), now, true)
+            facilitator.addToUserHistory(target, false, context(words), now, true)
+            Thread.sleep(27_000) // learned words are written 25 s after typing
+            val predicted = predictions(words, null)
+            val rank = predicted.indexOfFirst { it.equals(target, ignoreCase = true) } + 1 // 0: not predicted
+            result.put("after_$uses", "rank $rank: ${predicted.take(5).joinToString(", ")}")
+        }
+        result.toString(2).lines().forEach { Log.i(TAG, it) }
+        facilitator.clearUserHistoryDictionary(context)
+        facilitator.closeDictionaries()
+    }
+
     private fun SuggestedWords.getOrNull(index: Int) = if (index < size) getInfo(index) else null
 
     companion object {
@@ -246,7 +296,16 @@ class EnglishPredictionBenchmark {
         private const val NOISE = 0.25 // standard deviation of a tap, in key widths / heights
         private const val WARM_UP = 50
         private val EXAMPLES = listOf("good", "how are", "I would like", "thank you very", "see you", "happy birthday",
-            "nice to", "please let me", "have a nice", "I will be")
+            "nice to", "please let me", "have a nice", "I will be", "as soon as", "looking forward to", "let me",
+            "I don't")
+        // typed exactly, these must not be autocorrected to something else (a word not in the dictionary may be,
+        // that is existing behaviour; the count must not grow)
+        private val MUST_STAY = listOf("quixotic", "zeitgeist", "lugubrious", "perspicacious", "ephemeral", "serendipity",
+            "Kasun", "Nimal", "Dilshan", "Siobhan", "Niamh", "Rananjaya", "kotlin", "github", "javascript", "kubernetes",
+            "postgres", "json", "npm", "sdk", "android", "linux", "example.com", "www.google.com", "user@example.com",
+            "name.surname@mail.lk", "https://github.com")
+        private val MUST_STAY_UK = listOf("colour", "organise", "centre", "favourite", "realise", "travelled", "programme")
+        private val MUST_STAY_US = listOf("color", "organize", "center", "favorite", "realize", "traveled", "program")
         private val TYPOS = listOf("teh", "thsi", "goign", "becuase", "recieve", "tommorow", "helloworld")
     }
 }

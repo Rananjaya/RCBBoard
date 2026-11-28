@@ -14,9 +14,9 @@ below must be checked again at the source before it is used.
 | Source | Kind of text | Licence (to verify at source) | Use |
 | --- | --- | --- | --- |
 | AOSP English dictionary (already bundled, `main_en-US.dict`) | Unigrams, bigrams | Apache-2.0 (from AOSP LatinIME, via HeliBoard) | Baseline; reuse its bigrams for en-GB with spelling mapping |
-| Tatoeba sentences | Short everyday sentences, conversational | CC BY 2.0 FR (verified) | **Used in M2** for English bigrams; attribution given |
+| Tatoeba sentences | Short everyday sentences, conversational | CC BY 2.0 FR (verified) | **Used in M2 and M3** for English bigrams and phrases (trigrams); attribution given |
 | Wikipedia (English) dump | Encyclopaedic text | CC BY-SA 4.0 (one-way compatible with GPL-3.0) | Vocabulary and general n-grams; share-alike applies to derived data |
-| Project Gutenberg texts (public domain in the US) | Older literature | Public domain (US); check each text | Optional, older language |
+| Project Gutenberg texts (public domain in the US) | Older literature | Public domain (US); check each text | **Used in M3** only as an independent test set (#1342, #1661), not in the app |
 | Google Books Ngram dataset | Book n-gram counts | CC BY 3.0 | Possible source of counts; book language, large |
 | SCOWL / spelling word lists | US/UK spelling variants | Permissive (MIT-like) | Mapping en-US ↔ en-GB spellings |
 
