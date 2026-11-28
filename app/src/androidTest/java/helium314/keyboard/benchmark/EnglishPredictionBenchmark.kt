@@ -393,6 +393,49 @@ class EnglishPredictionBenchmark {
         context.filesDir.walkTopDown().filter { it.isFile && it.path.contains("UserHistoryDictionary") }
             .maxOfOrNull { it.lastModified() } ?: 0L
 
+    /** where typing time goes: the dictionaries (native search) versus the whole Suggest call */
+    @Test fun profile() {
+        val noEmoji = InstrumentationRegistry.getArguments().getString("noEmoji") == "true"
+        context.getSharedPreferences(context.packageName + "_preferences", Context.MODE_PRIVATE) // (debug build)
+        helium314.keyboard.latin.utils.DeviceProtectedUtils.getSharedPreferences(context).edit()
+            .putBoolean(helium314.keyboard.latin.settings.Settings.PREF_SUGGEST_EMOJIS, !noEmoji).commit()
+        setUp()
+        val random = Random(SEED)
+        val dictionaries = ArrayList<Long>(); val total = ArrayList<Long>()
+        val settings = SettingsValuesForSuggestion(true, false)
+        lines("typing.tsv").take(600).forEach { line ->
+            val (contextText, word) = line.split("\t")
+            val composer = type(word, random)
+            val ngram = context(contextText.split(" "))
+            var start = System.nanoTime()
+            facilitator.getSuggestionResults(composer.composedDataSnapshot, ngram, keyboard, settings, Suggest.SESSION_ID_TYPING, InputStyle.TYPING)
+            dictionaries.add(System.nanoTime() - start)
+            start = System.nanoTime()
+            suggest.getSuggestedWords(composer, ngram, keyboard, settings, true, InputStyle.TYPING, sequence++)
+            total.add(System.nanoTime() - start)
+        }
+        val result = JSONObject().put("locale", localeTag).put("emoji_dictionary", !noEmoji)
+            .put("dictionaries_p50_p95", "%.1f / %.1f ms".format(percentile(dictionaries.drop(WARM_UP), 0.5), percentile(dictionaries.drop(WARM_UP), 0.95)))
+            .put("suggest_p50_p95", "%.1f / %.1f ms".format(percentile(total.drop(WARM_UP), 0.5), percentile(total.drop(WARM_UP), 0.95)))
+        result.toString(2).lines().forEach { Log.i(TAG, it) }
+        facilitator.closeDictionaries()
+    }
+
+    /** the emoji suggestions (position, emoji) for typed words and prefixes, to compare implementations */
+    @Test fun emojiOutput() {
+        setUp()
+        val result = JSONObject().put("locale", localeTag)
+        listOf("pizza", "piz", "heart", "love", "happy", "hap", "dog", "cat", "sun", "fire", "smile", "birthday",
+            "birt", "coffee", "beer", "car", "phone", "music", "cake", "party", "rain", "star", "moon", "tree",
+            "flower", "kiss", "laugh", "cry", "angry", "sad", "ok", "thanks", "pizzza", "hapy").forEach { typed ->
+            val r = suggestions(type(typed, null), listOf("the"), null)
+            result.put(typed, r.mapIndexedNotNull { i, info ->
+                if (helium314.keyboard.latin.common.isEmoji(info.word)) "$i:${info.word}" else null }.joinToString(" "))
+        }
+        result.toString(2).lines().forEach { Log.i(TAG, it) }
+        facilitator.closeDictionaries()
+    }
+
     private fun SuggestedWords.getOrNull(index: Int) = if (index < size) getInfo(index) else null
 
     companion object {

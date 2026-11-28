@@ -142,22 +142,44 @@ class PhraseDictionary private constructor(locale: Locale, private val data: Byt
         @JvmStatic
         fun create(context: Context, locale: Locale): PhraseDictionary? {
             if (locale.language != "en") return null
-            val name = "phrases/${locale.language}-${locale.country}.phrases"
+            val name = "${locale.language}-${locale.country}.phrases"
             return try {
-                val bytes = context.assets.open(name).use { it.readBytes() }
-                val data = ByteBuffer.wrap(bytes) // big endian, as written by the build script
-                if (bytes.size < 12 || bytes[0] != 'R'.code.toByte() || bytes[1] != 'C'.code.toByte()
-                        || bytes[2] != 'B'.code.toByte() || bytes[3] != 'P'.code.toByte()
+                val data = map(context, "phrases/$name") ?: return null
+                if (data.capacity() < 12 || data.get(0) != 'R'.code.toByte() || data.get(1) != 'C'.code.toByte()
+                        || data.get(2) != 'B'.code.toByte() || data.get(3) != 'P'.code.toByte()
                         || data.getShort(4).toInt() != VERSION) {
                     Log.w(TAG, "$name is not a phrase file of version $VERSION")
                     null
                 } else PhraseDictionary(locale, data)
-            } catch (_: java.io.FileNotFoundException) {
-                null // no phrases for this locale
             } catch (e: Exception) {
                 Log.w(TAG, "could not read $name", e)
                 null
             }
         }
+
+        /**
+         * The phrase file, memory-mapped from a copy in the cache (copied once per asset version), so it takes no
+         * heap and is shared by every user of it (keyboard and spell checker). Null if there is no such asset.
+         */
+        private fun map(context: Context, asset: String): java.nio.MappedByteBuffer? {
+            val directory = java.io.File(context.cacheDir, "phrases").apply { mkdirs() }
+            val baseName = asset.substringAfter('/')
+            if (context.assets.list(asset.substringBefore('/'))?.contains(baseName) != true) return null
+            // a new copy after every app install or update, when the asset may have changed
+            val installed = context.packageManager.getPackageInfo(context.packageName, 0).lastUpdateTime
+            val file = java.io.File(directory, "$baseName.$installed")
+            synchronized(LOCK) {
+                if (!file.isFile) {
+                    directory.listFiles()?.filter { it.name.startsWith("$baseName.") }?.forEach { it.delete() } // old versions
+                    val temp = java.io.File(directory, "$baseName.tmp")
+                    context.assets.open(asset).use { input -> temp.outputStream().use { input.copyTo(it) } }
+                    if (!temp.renameTo(file)) return null
+                }
+            }
+            val length = file.length()
+            return java.io.RandomAccessFile(file, "r").use { it.channel.map(java.nio.channels.FileChannel.MapMode.READ_ONLY, 0, length) }
+        }
+
+        private val LOCK = Any()
     }
 }
