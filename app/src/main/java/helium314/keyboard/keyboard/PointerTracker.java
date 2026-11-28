@@ -832,8 +832,15 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
             // continues with the whole path. The word is accepted when the finger is lifted, see onUpEvent.
             final int up = mStartY - y;
             final int sideways = Math.abs(x - mStartX);
-            if (up > 0 && up > 2 * sideways) {
-                if (!mFretFlickArmed && up > mKeyboard.mMostCommonKeyHeight * FRET_FLICK_MIN_DISTANCE) {
+            final float keyHeight = mKeyboard.mMostCommonKeyHeight;
+            // too short to tell the direction yet: thumbs wobble a little when they start moving
+            final boolean undecided = up < keyHeight * FRET_FLICK_SLOP && sideways < keyHeight * FRET_FLICK_SLOP;
+            // up, within 45 degrees of vertical (thumbs flick at an angle)
+            final boolean upwards = up > 0 && up >= sideways;
+            // a started flick may curve at the end, as long as it stays clearly above where it started
+            final boolean stillFlicking = mFretFlickArmed && up > keyHeight * FRET_FLICK_MIN_DISTANCE / 2 && 2 * up >= sideways;
+            if (undecided || upwards || stillFlicking) {
+                if (!mFretFlickArmed && upwards && up > keyHeight * FRET_FLICK_MIN_DISTANCE) {
                     mFretFlickArmed = true;
                     sTimerProxy.cancelLongPressTimersOf(this); // no popup keys panel during a flick
                     setReleasedKeyGraphics(mCurrentKey, true); // the key preview would cover the word
@@ -1082,7 +1089,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
 
         sTimerProxy.cancelUpdateBatchInputTimer(this);
         if (mFretFlickWord != null && mFretFlickArmed && !sInGesture && !isShowingPopupKeysPanel()
-                && mStartY - y > mKeyboard.mMostCommonKeyHeight * FRET_FLICK_MIN_DISTANCE) {
+                && mStartY - y > mKeyboard.mMostCommonKeyHeight * FRET_FLICK_MIN_DISTANCE / 2) {
             acceptFretFlick(); // the key itself is not typed; gesture typing never started, the next down resets it
             return;
         }
@@ -1249,8 +1256,10 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         }
     }
 
-    /** fraction of the row height a finger must move up for a BlackBerry 10 style flick */
-    private static final float FRET_FLICK_MIN_DISTANCE = 0.4f;
+    /** fraction of the row height a finger must move up for a BlackBerry 10 style flick (was 0.4: often missed) */
+    private static final float FRET_FLICK_MIN_DISTANCE = 0.3f;
+    /** movement (fraction of the row height) below which the direction of a possible flick is not judged yet */
+    private static final float FRET_FLICK_SLOP = 0.12f;
 
     private void acceptFretFlick() {
         final SuggestedWordInfo word = mFretFlickWord;
