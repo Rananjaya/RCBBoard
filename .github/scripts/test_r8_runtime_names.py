@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""Static checks against R8 obfuscation and resource shrinking problems (see release_smoke_test.py).
+"""Static checks against R8 obfuscation and resource shrinking problems.
 
 Release builds rename classes and remove resources that look unused. Code that depends on a class or
 package name, or that looks resources up by name at runtime, then breaks only in the release APK:

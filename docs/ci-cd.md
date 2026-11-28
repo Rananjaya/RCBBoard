@@ -33,9 +33,7 @@ Runs when a pull request to `develop` is opened, updated with new commits, reope
 | Unit tests | `./gradlew --init-script .github/ci-unit-tests.init.gradle :app:testRunTestsUnitTest -Pandroid.onlyEnableUnitTestForTheTestedBuildType=false` on JDK 21. The `runTests` build type skips tests that already fail upstream; AGP 9 only creates its test task with this flag. The init script leaves out `XLinkTest`, which checks external web links and depends on other websites. |
 | Native tests (ASan/UBSan) | `app/src/main/jni/tests/host/run_host_tests.sh` with clang and GoogleTest |
 | Debug build | `./gradlew :app:assembleDebug`; the debug APK is attached to the run (skipped when called by Development, which builds the same APK itself) |
-| Release smoke test | Builds the minified, obfuscated and resource-shrunk release APK exactly like the release workflow, signs it with a throwaway key and runs `.github/scripts/release_smoke_test.py` on an emulator (API 34, Pixel 6 profile): the keyboard service starts and the settings open without any crash or ANR. It only uses adb commands that GitHub's emulators handle reliably (reading and tapping the screen made them freeze); the names that resource shrinking could remove, such as "Fret", are checked statically by *Release script tests*. A screenshot and the log are attached to the run. |
 
-**Why the release smoke test:** R8 obfuscation and resource shrinking break code only in the release APK, never in debug builds or unit tests. 5.1.2 crashed whenever the keyboard started, because `AccessibilityUtils` looked up its own Java package, which obfuscation removes. `.github/scripts/test_r8_runtime_names.py` (part of *Release script tests*) also blocks the known patterns in seconds:
 - Java package lookups;
 - stored names (files, preferences) derived from class names, such as the user history dictionary's file name;
 - strings that the code looks up by name but that `app/src/main/res/raw/keep.xml` does not protect from shrinking;
@@ -93,7 +91,6 @@ The release workflow:
 3. **Waits for approval** in the `release` environment.
 4. **Builds** the universal release APK and the App Bundle for Google Play from exactly that commit (`:app:assembleRelease :app:bundleRelease`, all four ABIs, glide typing off, no Gradle cache).
 5. **Signs** it with the existing production key from the `release` environment secrets and **verifies** it: v1 and v2 signatures, exactly one signer whose certificate SHA-256 is `0b01373116d4a7b57646c4c7e2ffc28af91870bdbeabb4b8c05c00f313e2291b`, package `com.rananjaya.rcbboard`, version, minSdk 21, all four ABIs. The App Bundle is signed with the same key (`jarsigner`) and checked the same way: `jarsigner -verify`, exactly that certificate (`keytool -printcert -jarfile`), `bundletool validate` (bundletool pinned by version and SHA-256), package, version and all four ABIs.
-   - **Release smoke test:** after signing and before anything is uploaded, tagged or published, the exact production-signed APK runs on an emulator with `.github/scripts/release_smoke_test.py` (see [CI: pull requests](#ci-pull-requests)). If it crashes or fails, nothing is published. Its screenshots and log are kept as an Actions artifact for 30 days.
 6. **Tags** exactly that commit as `rcbboard-vX.Y.Z`.
 7. **Publishes** a GitHub Release with `RCBBoard-X.Y.Z.apk`, `RCBBoard-X.Y.Z.aab` (for uploading to Google Play by hand; it cannot be installed directly) and `SHA256SUMS.txt`. The notes list the version, commit, QA run, build date, installation steps and the certificate fingerprint (no commit messages). It is marked *latest* only if no newer release is published.
 
@@ -227,11 +224,11 @@ Settings → Rules → Rulesets. `develop` and `main` need **different** rules, 
 | Restrict updates | **off** (with an empty bypass list it would block every merge) |
 | Require a pull request before merging | on, **Required approvals: 0** (single maintainer: GitHub does not let you approve your own pull request) |
 | Require status checks to pass | on, **Require branches to be up to date before merging** on |
-| Status checks (source **GitHub Actions**) | `Release script tests`, `Unit tests`, `Native tests (ASan/UBSan)`, `Debug build`, `Release smoke test` |
+| Status checks (source **GitHub Actions**) | `Release script tests`, `Unit tests`, `Native tests (ASan/UBSan)`, `Debug build` |
 
 These are the job names in `ci.yml`, which runs for every pull request to `develop` (no path filters, so the checks are never missing). A failed, cancelled or missing check blocks the merge. Choosing **GitHub Actions** as the source means only this repository's workflows can report them. `test_workflows.py` fails if a job is renamed, because the ruleset would then wait for a check that never reports.
 
-Check afterwards: `https://api.github.com/repos/Rananjaya/RCBBoard/rules/branches/develop` must list `required_status_checks` with the five checks, and no `update` rule.
+Check afterwards: `https://api.github.com/repos/Rananjaya/RCBBoard/rules/branches/develop` must list `required_status_checks` with the four checks, and no `update` rule.
 
 ### `main`: an exact copy of HeliBoard
 
