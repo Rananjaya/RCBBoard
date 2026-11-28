@@ -308,7 +308,7 @@ class EnglishPredictionBenchmark {
     @Test fun learning() {
         setUp(personalized = true)
         facilitator.clearUserHistoryDictionary(context)
-        val delay = (InstrumentationRegistry.getArguments().getString("learnDelay") ?: "25").toLong()
+        val delay = (InstrumentationRegistry.getArguments().getString("learnDelay") ?: "25").toDouble()
         val result = JSONObject().put("locale", localeTag).put("learn_delay_s", delay)
         fun now() = System.currentTimeMillis() / 1000
         fun teach(word: String, previous: List<String>, autoCapitalized: Boolean = false) {
@@ -316,7 +316,7 @@ class EnglishPredictionBenchmark {
             Thread.sleep(400) // one word after the other, like typing: each is learned after the delay, in order
         }
         fun completions(prefix: String) = suggestions(type(prefix, null), listOf("the"), null).drop(1).map { it.word }
-        fun waitForLearning() = Thread.sleep((delay + 2) * 1000)
+        fun waitForLearning() = Thread.sleep(((delay + 2) * 1000).toLong())
 
         // 1. seconds until a typed phrase is predicted (a valid word in an unusual context)
         val start = System.currentTimeMillis()
@@ -351,10 +351,38 @@ class EnglishPredictionBenchmark {
         teach("typpo", listOf("my")); waitForLearning()
         result.put("single_typo_learned", "typpo" in completions("typp"))
 
-        // 5. saved to storage while still typing in the same field (no onFinishInput)
+        // 5. saved to storage while still typing in the same field (no onFinishInput): seconds until written
+        Thread.sleep(20_000) // let earlier saves finish
         val savedBefore = historyFilesModified()
-        teach("persisted", listOf("is")); Thread.sleep((delay + 20) * 1000)
-        result.put("saved_without_leaving_field", historyFilesModified() > savedBefore)
+        val saveStart = System.currentTimeMillis()
+        teach("persisted", listOf("is"))
+        var savedAfter = -1.0
+        while (System.currentTimeMillis() - saveStart < 40_000) {
+            if (historyFilesModified() > savedBefore) { savedAfter = (System.currentTimeMillis() - saveStart) / 1000.0; break }
+            Thread.sleep(250)
+        }
+        result.put("saved_without_leaving_field", savedAfter >= 0).put("saved_after_s", savedAfter)
+
+        // 6. M7: a new word the user deliberately kept is learned at once; a typo corrected after being learned is removed
+        facilitator.markAccepted("zentrix"); teach("zentrix", listOf("my")); Thread.sleep(1500)
+        result.put("accepted_new_word_after_1_use", "zentrix" in completions("zent"))
+        teach("wrongz", listOf("my")); waitForLearning()
+        facilitator.unlearnFromUserHistory("wrongz", context(listOf("my")), now(), DictionaryFacilitator.UnlearnEvent.BACKSPACE)
+        teach("wrongz", listOf("my")); waitForLearning()
+        result.put("late_corrected_typo_learned", "wrongz" in completions("wrong"))
+
+        // 7. disk writes while typing a word every second for 20 s (battery: fewer is better)
+        Thread.sleep(20_000)
+        var writes = 0; var last = historyFilesModified()
+        val burstStart = System.currentTimeMillis()
+        var i = 0
+        while (System.currentTimeMillis() - burstStart < 30_000) {
+            if (i < 20) teach(listOf("good", "morning", "and", "thank", "you")[i % 5], listOf("so"))
+            i++
+            Thread.sleep(600)
+            val now = historyFilesModified(); if (now != last) { writes++; last = now }
+        }
+        result.put("writes_during_20_words", writes)
 
         result.toString(2).lines().forEach { Log.i(TAG, it) }
         facilitator.clearUserHistoryDictionary(context)
