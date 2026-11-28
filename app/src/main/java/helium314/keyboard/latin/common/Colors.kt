@@ -92,7 +92,11 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
 
     private val isNight = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
 
+    // RCBBoard: stronger tones of the wallpaper palette, like Gboard's and FUTO's Material You colours: a tinted
+    // background, tinted functional keys and a saturated action key (the action key has its own colour, so
+    // toolbar and emoji highlights that show dark icons on the accent keep a light accent)
     private val accent = getAccent(context)
+    private val actionKey = getActionKey(context)
     private val gesture = getGesture(context)
     private val background = getBackground(context)
     private val keyBackground = getKeyBackground(context)
@@ -102,16 +106,18 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
     private val keyHintText = getKeyHintText(context)
     private val spaceBarText = getSpaceBarText(context)
 
-    private fun getAccent(context: Context) = if (isNight) ContextCompat.getColor(context, android.R.color.system_accent1_100)
+    private fun getAccent(context: Context) = if (isNight) ContextCompat.getColor(context, android.R.color.system_accent1_200)
         else ContextCompat.getColor(context, android.R.color.system_accent1_200)
+    private fun getActionKey(context: Context) = if (isNight) ContextCompat.getColor(context, android.R.color.system_accent1_200)
+        else ContextCompat.getColor(context, android.R.color.system_accent1_600)
     private fun getGesture(context: Context) = if (isNight) accent
         else ContextCompat.getColor(context, android.R.color.system_accent1_600)
     private fun getBackground(context: Context) = if (isNight) ContextCompat.getColor(context, android.R.color.system_neutral1_900)
-        else ContextCompat.getColor(context, android.R.color.system_neutral1_50)
-    private fun getKeyBackground(context: Context) = if (isNight) ContextCompat.getColor(context, android.R.color.system_neutral1_800)
-        else  ContextCompat.getColor(context, android.R.color.system_neutral1_0)
-    private fun getFunctionalKey(context: Context) = if (isNight) ContextCompat.getColor(context, android.R.color.system_accent2_300)
-        else ContextCompat.getColor(context, android.R.color.system_accent2_100)
+        else ContextCompat.getColor(context, android.R.color.system_neutral2_100)
+    private fun getKeyBackground(context: Context) = if (isNight) ContextCompat.getColor(context, android.R.color.system_neutral2_800)
+        else  ContextCompat.getColor(context, android.R.color.system_neutral1_10)
+    private fun getFunctionalKey(context: Context) = if (isNight) ContextCompat.getColor(context, android.R.color.system_accent2_700)
+        else ContextCompat.getColor(context, android.R.color.system_accent2_200)
     private fun getKeyText(context: Context) = if (isNight) ContextCompat.getColor(context, android.R.color.system_neutral1_50)
         else ContextCompat.getColor(context, android.R.color.system_accent3_900)
     private fun getKeyHintText(context: Context) = if (isNight) keyText
@@ -121,6 +127,7 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
 
     override fun haveColorsChanged(context: Context) =
         accent != getAccent(context)
+                || actionKey != getActionKey(context)
                 || gesture != getGesture(context)
                 || background != getBackground(context)
                 || keyBackground != getKeyBackground(context)
@@ -233,11 +240,9 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
 
             functionalKeyStateList =
                 if (!isNight) pressedStateList(doubleAdjustedFunctionalKey, functionalKey)
-                else pressedStateList(functionalKey, doubleAdjustedKeyBackground)
+                else pressedStateList(brighten(functionalKey), functionalKey)
 
-            actionKeyStateList =
-                if (!isNight) pressedStateList(gesture, accent)
-                else pressedStateList(doubleAdjustedAccent, accent)
+            actionKeyStateList = pressedStateList(darken(actionKey), actionKey)
 
             spaceBarStateList =
                 if (themeStyle == STYLE_HOLO) pressedStateList(spaceBar, spaceBar)
@@ -259,8 +264,7 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
 
             actionKeyStateList =
                 if (themeStyle == STYLE_HOLO) pressedStateList(accent, Color.TRANSPARENT)
-                else if (!isNight) pressedStateList(gesture, accent)
-                else pressedStateList(doubleAdjustedAccent, accent)
+                else pressedStateList(darken(actionKey), actionKey)
 
             spaceBarStateList =
                 if (!isNight) pressedStateList(gesture, adjustedFunctionalKey)
@@ -271,13 +275,14 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
         actionKeyIconColorFilter = when {
             themeStyle == STYLE_HOLO -> keyTextFilter
             // the white icon may not have enough contrast, and can't be adjusted by the user
-            isBrightColor(accent) -> colorFilter(Color.DKGRAY)
+            isBrightColor(actionKey) -> colorFilter(Color.DKGRAY)
             else -> null
         }
     }
 
     override fun get(color: ColorType): Int = when (color) {
-        TOOL_BAR_KEY_ENABLED_BACKGROUND, EMOJI_CATEGORY_SELECTED, ACTION_KEY_BACKGROUND, CLIPBOARD_PIN -> accent
+        TOOL_BAR_KEY_ENABLED_BACKGROUND, EMOJI_CATEGORY_SELECTED, CLIPBOARD_PIN -> accent
+        ACTION_KEY_BACKGROUND -> if (themeStyle == STYLE_HOLO) accent else actionKey
         SHIFT_KEY_ICON -> if (accentShiftedIcon) accent else keyText
         AUTOFILL_BACKGROUND_CHIP, GESTURE_PREVIEW, POPUP_KEYS_BACKGROUND, MORE_SUGGESTIONS_BACKGROUND, KEY_PREVIEW_BACKGROUND -> adjustedBackground
         TOOL_BAR_EXPAND_KEY_BACKGROUND -> if (!isNight) accent else doubleAdjustedBackground
@@ -287,11 +292,11 @@ class DynamicColors(context: Context, override val themeStyle: String, override 
             EMOJI_SEARCH_TEXT, CLIPBOARD_SUGGESTION_ICON -> keyText
         KEY_HINT_TEXT -> keyHintText
         SPACE_BAR_TEXT -> spaceBarText
-        FUNCTIONAL_KEY_BACKGROUND, EMOJI_SEARCH_BACKGROUND -> if (!isNight) functionalKey else doubleAdjustedKeyBackground
+        FUNCTIONAL_KEY_BACKGROUND, EMOJI_SEARCH_BACKGROUND -> functionalKey
         SPACE_BAR_BACKGROUND -> spaceBar
         MORE_SUGGESTIONS_WORD_BACKGROUND, MAIN_BACKGROUND -> background
         KEY_BACKGROUND -> keyBackground
-        ACTION_KEY_POPUP_KEYS_BACKGROUND -> if (themeStyle == STYLE_HOLO) adjustedBackground else accent
+        ACTION_KEY_POPUP_KEYS_BACKGROUND -> if (themeStyle == STYLE_HOLO) adjustedBackground else actionKey
         STRIP_BACKGROUND -> if (!hasKeyBorders && themeStyle == STYLE_MATERIAL) adjustedBackground else background
         CLIPBOARD_SUGGESTION_BACKGROUND -> keyBackground
         NAVIGATION_BAR -> navBar
