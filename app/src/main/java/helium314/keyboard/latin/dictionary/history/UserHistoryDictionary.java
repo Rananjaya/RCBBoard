@@ -25,7 +25,9 @@ import java.util.Map;
  * typist over time.
  */
 public class UserHistoryDictionary extends ExpandableBinaryDictionary {
-    public static final String NAME = UserHistoryDictionary.class.getSimpleName();
+    // A fixed name, not the class name: release builds rename classes, and this name is part of the history
+    // file names on disk, so learned words would be lost (and other files mistaken for history) after updates.
+    public static final String NAME = "UserHistoryDictionary";
 
     UserHistoryDictionary(Context context, Locale locale) {
         super(context, getDictName(NAME, locale, null), locale, Dictionary.TYPE_USER_HISTORY, null);

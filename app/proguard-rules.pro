@@ -23,3 +23,8 @@
 
 # after upgrading to gradle 8, stack traces contain "unknown source"
 -keepattributes SourceFile,LineNumberTable
+
+# Enum constants are stored in preferences by name (toolbar keys and mode, swipe actions, colour types,
+# layout types) and read back with valueOf. Keep the names of the constants stable, so settings saved by
+# one release are still understood by the next (the enums themselves can still be optimized).
+-keepclassmembernames,allowoptimization enum helium314.keyboard.** { <fields>; }

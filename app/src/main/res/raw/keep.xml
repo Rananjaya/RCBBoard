@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Resources that the code looks up by name at runtime (Resources.getIdentifier, getStringResourceOrName,
+    "!string/..." in the layout files), so the resource shrinker of release builds can't see that they are used.
+    Without this, release builds lose them: for example the "Fret" style name, theme names, toolbar modes,
+    popup key and layout names, which then show as raw internal names.
+    SPDX-License-Identifier: GPL-3.0-only
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@string/style_name_*,@string/theme_name_*,@string/layout_*,@string/toolbar_mode_*,@string/popup_keys_*,@string/label_*" />
