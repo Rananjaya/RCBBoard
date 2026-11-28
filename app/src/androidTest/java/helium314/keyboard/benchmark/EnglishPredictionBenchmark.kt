@@ -288,6 +288,70 @@ class EnglishPredictionBenchmark {
         facilitator.closeDictionaries()
     }
 
+    /**
+     * Personal learning through the normal path (DictionaryFacilitator.addToUserHistory), with this app's own
+     * history, cleared before and after. Instrumentation argument learnDelay: the build's learning delay in seconds.
+     */
+    @Test fun learning() {
+        setUp(personalized = true)
+        facilitator.clearUserHistoryDictionary(context)
+        val delay = (InstrumentationRegistry.getArguments().getString("learnDelay") ?: "25").toLong()
+        val result = JSONObject().put("locale", localeTag).put("learn_delay_s", delay)
+        fun now() = System.currentTimeMillis() / 1000
+        fun teach(word: String, previous: List<String>, autoCapitalized: Boolean = false) {
+            facilitator.addToUserHistory(word, autoCapitalized, context(previous), now(), true)
+            Thread.sleep(400) // one word after the other, like typing: each is learned after the delay, in order
+        }
+        fun completions(prefix: String) = suggestions(type(prefix, null), listOf("the"), null).drop(1).map { it.word }
+        fun waitForLearning() = Thread.sleep((delay + 2) * 1000)
+
+        // 1. seconds until a typed phrase is predicted (a valid word in an unusual context)
+        val start = System.currentTimeMillis()
+        teach("purple", emptyList()); teach("elephant", listOf("purple")); teach("dances", listOf("purple", "elephant"))
+        var seconds = -1.0
+        while (System.currentTimeMillis() - start < (delay + 15) * 1000) {
+            if (predictions(listOf("purple", "elephant"), null).any { it.equals("dances", true) }) {
+                seconds = (System.currentTimeMillis() - start) / 1000.0; break
+            }
+            Thread.sleep(500)
+        }
+        result.put("phrase_predicted_after_s", seconds)
+
+        // 2. a new word (not in the dictionary) offered while typing it, after 1 and 2 uses
+        teach("kasunika", listOf("my")); waitForLearning()
+        result.put("new_word_after_1_use", "kasunika" in completions("kasun"))
+        teach("kasunika", listOf("my")); waitForLearning()
+        result.put("new_word_after_2_uses", "kasunika" in completions("kasun"))
+
+        // 3. sentence start: a name the user capitalised, and a word only auto-capitalised (2 uses each)
+        repeat(2) { teach("Nimesha", emptyList()); teach("Blorptastic", emptyList(), autoCapitalized = true); waitForLearning() }
+        result.put("capitalised_name_at_sentence_start_learned", completions("nimes").any { it == "Nimesha" })
+        result.put("auto_capitalised_new_word_learned", completions("blorpt").any { it.equals("blorptastic", true) })
+
+        // 4. typo protection: corrected right away (unlearned), or typed only once
+        repeat(2) {
+            teach("wrongg", listOf("my"))
+            facilitator.unlearnFromUserHistory("wrongg", context(listOf("my")), now(), DictionaryFacilitator.UnlearnEvent.BACKSPACE)
+            waitForLearning()
+        }
+        result.put("corrected_typo_learned", "wrongg" in completions("wrong"))
+        teach("typpo", listOf("my")); waitForLearning()
+        result.put("single_typo_learned", "typpo" in completions("typp"))
+
+        // 5. saved to storage while still typing in the same field (no onFinishInput)
+        val savedBefore = historyFilesModified()
+        teach("persisted", listOf("is")); Thread.sleep((delay + 20) * 1000)
+        result.put("saved_without_leaving_field", historyFilesModified() > savedBefore)
+
+        result.toString(2).lines().forEach { Log.i(TAG, it) }
+        facilitator.clearUserHistoryDictionary(context)
+        facilitator.closeDictionaries()
+    }
+
+    private fun historyFilesModified(): Long =
+        context.filesDir.walkTopDown().filter { it.isFile && it.path.contains("UserHistoryDictionary") }
+            .maxOfOrNull { it.lastModified() } ?: 0L
+
     private fun SuggestedWords.getOrNull(index: Int) = if (index < size) getInfo(index) else null
 
     companion object {

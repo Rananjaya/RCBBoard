@@ -78,7 +78,13 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
      * todo: ideally the native library would allow reverting recent additions
      */
     private val wordsWaitingForHistory = hashMapOf<String, Job>()
-    private val unlearnDuration = 25.seconds
+    // RCBBoard: 10 s (was 25 s): long enough to cancel learning a word that is corrected right away, short enough
+    // for a new word or phrase to be suggested again soon (see docs/prediction/M5-personal-learning.md)
+    private val unlearnDuration = 10.seconds
+    // RCBBoard: learned words are saved this long after the last one, not only when leaving a text field, so that
+    // they are not lost if the keyboard process ends while the same field is still in use
+    private val historySaveDelay = 15.seconds
+    private var historySaveJob: Job? = null
 
     private val scope = CoroutineScope(Dispatchers.Default)
 
@@ -337,7 +343,10 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
             .maxByOrNull { it.confidence }
     }
 
-    private fun determineWordToUse(word: String, wasAutoCapitalizedOrIsBeginningOfSentence: Boolean, dictionaryGroup: DictionaryGroup): String? {
+    private fun determineWordToUse(
+        word: String, wasAutoCapitalizedOrIsBeginningOfSentence: Boolean, wasAutoCapitalized: Boolean,
+        dictionaryGroup: DictionaryGroup
+    ): String? {
         // Check for isBeginningOfSentenceContext too, because not all text fields auto-capitalize in this case.
         // Even if the user capitalizes manually, they most likely don't want the capitalized form suggested.
         if (wasAutoCapitalizedOrIsBeginningOfSentence && Character.isUpperCase(word.codePointAt(0))) {
@@ -364,6 +373,9 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
                 val decapitalizedInHistory = histDict.isInDictionary(decapitalizedWord)
                 if (wordInHistory && !decapitalizedInHistory) return word
                 else if (!wordInHistory && decapitalizedInHistory) return decapitalizedWord
+                // RCBBoard: a new word the user capitalised at the start of a sentence (not the keyboard's automatic
+                // capital), for example a name, is learned as typed instead of not at all
+                if (!wasAutoCapitalized && !wordValid && !decapitalizedValid) return word
             }
             return null // can't determine reliably enough, better add nothing (wasAutoCapitalizedOrIsBeginningOfSentence is unusual anyway)
         } else {
@@ -399,6 +411,7 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
         val wordToUse = determineWordToUse(
             word,
             wasAutoCapitalized || ngramContext.isBeginningOfSentenceContext,
+            wasAutoCapitalized,
             dictionaryGroup
         ) ?: return
 
@@ -419,9 +432,21 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
             }
 
             UserHistoryDictionary.addToDictionary(userHistoryDictionary, ngramContext, wordToUse, isValid, timeStampInSeconds)
+            scheduleHistorySave(userHistoryDictionary)
         }
         // we use the original word, because that's the one that is "unlearned" when the user corrects the word
         synchronized(wordsWaitingForHistory) { wordsWaitingForHistory[word] = addJob }
+    }
+
+    /** saves the learned words of [dictionary] once no word was learned for [historySaveDelay] */
+    private fun scheduleHistorySave(dictionary: Dictionary) {
+        synchronized(this) {
+            historySaveJob?.cancel()
+            historySaveJob = scope.launch {
+                delay(historySaveDelay)
+                dictionary.onFinishInput() // writes pending changes to the file, like when leaving a text field
+            }
+        }
     }
 
     private fun addToPersonalDictionaryIfInvalidButInHistory(word: String) {

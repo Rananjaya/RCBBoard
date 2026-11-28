@@ -893,6 +893,11 @@ New dictionary:
 \n► When using multilingual typing, space bar will show an confidence value used for determining the currently used language. &lt;br&gt; &lt;br&gt;
 \n► Suggestions will have some tiny numbers on top showing some internal score and source dictionary (can be disabled).</string>
     <string name="use_personalized_dicts_summary">Learn from your communications and typed data to improve suggestions</string>
+    <!-- RCBBoard: shown under "Personalized suggestions": how many words the keyboard has learned so far -->
+    <plurals name="learned_words_count">
+        <item quantity="one">%d word learned</item>
+        <item quantity="other">%d words learned</item>
+    </plurals>
     <!-- Label for soft enter key when it performs GO action.  Must be short to fit on key. 5 chars or less is preferable. -->
     <string name="label_go_key">Go</string>
     <!-- Label for soft enter key when it performs NEXT action.  Must be short to fit on key. 5 chars or less is preferable. -->
