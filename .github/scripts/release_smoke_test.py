@@ -131,6 +131,9 @@ def smoke_test(device: Device, apk: Path, package: str) -> None:
     device.run("logcat", "-c")
 
     # 1. the keyboard service starts as soon as it becomes the active keyboard
+    deadline = time.time() + 60  # a fresh install takes a moment to be registered as a keyboard
+    while ime not in device.shell("ime list -a -s", check=False) and time.time() < deadline:
+        time.sleep(2)
     device.shell(f"ime enable {ime}")
     device.shell(f"ime set {ime}")
     time.sleep(5)
