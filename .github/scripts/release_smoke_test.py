@@ -10,7 +10,7 @@ installs the exact APK and uses it like a person would:
 2. opens RCBBoard's settings (skipping the onboarding) and the Appearance screen
 3. opens the style picker and checks that the "Fret" style name survived resource shrinking,
    then selects Fret
-4. opens a text field so the keyboard is shown, and taps and types on it
+4. opens a text field so the keyboard is shown, and types while it is shown
 5. fails on any crash or ANR of the app, or if the app process is gone
 
 Screenshots and the app's log are written to --out-dir for the workflow to upload.
@@ -167,12 +167,14 @@ def smoke_test(device: Device, apk: Path, package: str) -> None:
     if not keyboard_shown(device):
         device.screenshot("keyboard-not-shown")
         raise SmokeTestError("the keyboard was not shown in a text field")
-    width, height = device.screen_size()
-    for fraction in (0.12, 0.3, 0.5, 0.7, 0.88):  # taps across a letter row near the bottom of the screen
-        device.shell(f"input tap {int(width * fraction)} {int(height * 0.82)}")
-        time.sleep(0.3)
+    # type through key events while the keyboard is shown (touch taps on the keyboard made the x86_64 emulators
+    # of GitHub's runners shut down, without any app crash; on phones and other emulators they work)
     device.shell("input text rcbboard")
+    device.shell("input keyevent KEYCODE_SPACE KEYCODE_DEL")
     time.sleep(2)
+    if not keyboard_shown(device):
+        device.screenshot("keyboard-gone")
+        raise SmokeTestError("the keyboard disappeared while typing")
     device.screenshot("keyboard")
     check_alive(device, package, "typing")
     (device.out_dir / "logcat.txt").write_text(device.run("logcat", "-d", timeout=60), encoding="utf-8")
