@@ -436,6 +436,63 @@ class EnglishPredictionBenchmark {
         facilitator.closeDictionaries()
     }
 
+    /**
+     * M9: the concurrency the app really has, with the parallel emoji search (M8): one input thread typing (all
+     * lookups of a facilitator come from the InputLogicHandler thread), while a second facilitator (as the spell
+     * checker has) searches its own dictionaries through the same background thread and keeps reloading them
+     * (language switches close dictionaries during searches). The input thread's results must never change.
+     */
+    @Test fun concurrency() {
+        setUp()
+        val settings = SettingsValuesForSuggestion(true, false)
+        val cases = lines("typing.tsv").take(200).map { line ->
+            val (contextText, word) = line.split("\t")
+            type(word, null) to context(contextText.split(" "))
+        }
+        fun run(f: DictionaryFacilitator, case: Pair<WordComposer, NgramContext>) = f.getSuggestionResults(
+            case.first.composedDataSnapshot, case.second, keyboard, settings, Suggest.SESSION_ID_TYPING, InputStyle.TYPING
+        ).map { "${it.word}:${it.score}" }
+        val expected = cases.map { run(facilitator, it) }
+        val second = DictionaryFacilitatorProvider.getDictionaryFacilitator(true)
+        second.resetDictionaries(context, locale, false, false, false, true, "spellcheck", null)
+        second.waitForLoadingMainDictionaries(60, TimeUnit.SECONDS)
+        val mismatches = java.util.concurrent.atomic.AtomicInteger()
+        val errors = java.util.concurrent.atomic.AtomicInteger()
+        val otherLookups = java.util.concurrent.atomic.AtomicInteger()
+        val reloads = java.util.concurrent.atomic.AtomicInteger()
+        val done = java.util.concurrent.atomic.AtomicBoolean(false)
+        val input = Thread {
+            repeat(4) { cases.indices.forEach { i ->
+                try { if (run(facilitator, cases[i]) != expected[i]) mismatches.incrementAndGet() } catch (e: Throwable) { errors.incrementAndGet() }
+            } }
+            done.set(true)
+        }
+        val spellChecker = Thread {
+            var i = 0
+            while (!done.get()) {
+                try { run(second, cases[i++ % cases.size]); otherLookups.incrementAndGet() } catch (e: Throwable) { errors.incrementAndGet() }
+            }
+        }
+        val reloader = Thread {
+            while (!done.get()) {
+                second.resetDictionaries(context, locale, false, false, false, true, "spellcheck", null)
+                reloads.incrementAndGet()
+                Thread.sleep(150)
+            }
+        }
+        val start = System.nanoTime()
+        listOf(input, spellChecker, reloader).forEach { it.start() }
+        listOf(input, spellChecker, reloader).forEach { it.join() }
+        val result = JSONObject().put("locale", localeTag).put("input_thread_lookups", 4 * cases.size)
+            .put("input_thread_mismatches", mismatches.get()).put("errors", errors.get())
+            .put("second_facilitator_lookups", otherLookups.get()).put("reloads_during_searches", reloads.get())
+            .put("search_threads", Thread.getAllStackTraces().keys.count { it.name.startsWith("DictionaryCollectionSearch") })
+            .put("seconds", (System.nanoTime() - start) / 1e9)
+        result.toString(2).lines().forEach { Log.i(TAG, it) }
+        second.closeDictionaries()
+        facilitator.closeDictionaries()
+    }
+
     private fun SuggestedWords.getOrNull(index: Int) = if (index < size) getInfo(index) else null
 
     companion object {
