@@ -28,8 +28,8 @@ import sys
 from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from build_english_bigrams import (EVAL_SHARE, SEGMENT_BREAK, TOKEN, Locale, allowed_successor,  # noqa: E402
-                                   decode, fit_frequency_scale, normalise, split_key, us_to_gb_map)
+from build_english_bigrams import (EVAL_SHARE, Locale, allowed_successor, counted_segments,  # noqa: E402
+                                   decode, fit_frequency_scale, split_key, us_to_gb_map)
 
 DEV_END = 15  # buckets EVAL_SHARE..DEV_END-1 are the development set
 MAGIC = b"RCBP"
@@ -52,21 +52,7 @@ def read_sentences(path: str, tune: bool) -> tuple[list[str], list[str]]:
 
 
 def segments(locale: Locale, sentence: str) -> list[list[str | None]]:
-    """like Locale.segments, but a word written with a capital in the middle of a sentence whose dictionary form is
-    lower case is not used: that is a name ("Tom" would otherwise count as the word "tom")"""
-    result = []
-    first = True
-    for part in SEGMENT_BREAK.split(normalise(sentence)):
-        tokens = []
-        for raw in TOKEN.findall(part):
-            word = locale.canonical(raw)
-            if word is not None and not first and raw[0].isupper() and word[0].islower():
-                word = None
-            tokens.append(word)
-            first = False
-        if tokens:
-            result.append(tokens)
-    return result
+    return counted_segments(locale, sentence)  # names are not counted (shared with the bigram build)
 
 
 def count(locale: Locale, sentences: list[str]):

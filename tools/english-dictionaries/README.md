@@ -31,7 +31,8 @@ python3 tools/english-dictionaries/build_english_bigrams.py --corpus eng_sentenc
 RCBBOARD_COMPILE_DICTS="/tmp/en-new/main_en-GB.combined=app/src/main/assets/dicts/main_en-GB.dict;/tmp/en-new/main_en-US.combined=app/src/main/assets/dicts/main_en-US.dict" \
   ./gradlew --init-script .github/ci-unit-tests.init.gradle :app:testRunTestsUnitTest \
   -Pandroid.onlyEnableUnitTestForTheTestedBuildType=false --tests 'helium314.keyboard.tools.CompileDictionaryTool'
-# (paths must be absolute: the test runs in app/)
+# (paths must be absolute: the test runs in app/; add :app:cleanTestRunTestsUnitTest before the test task, or
+#  Gradle skips it as up to date when only the files changed)
 ```
 
 ```sh

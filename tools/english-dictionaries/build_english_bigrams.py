@@ -98,6 +98,24 @@ class Locale:
         return result
 
 
+def counted_segments(locale: Locale, sentence: str) -> list[list[str | None]]:
+    """like Locale.segments, for counting: a word written with a capital in the middle of a sentence whose dictionary
+    form is lower case is not used, because it is a name ("Tom" would otherwise count as the word "tom")"""
+    result = []
+    first = True
+    for part in SEGMENT_BREAK.split(normalise(sentence)):
+        tokens = []
+        for raw in TOKEN.findall(part):
+            word = locale.canonical(raw)
+            if word is not None and not first and raw[0].isupper() and word[0].islower():
+                word = None
+            tokens.append(word)
+            first = False
+        if tokens:
+            result.append(tokens)
+    return result
+
+
 def fit_frequency_scale(locale: Locale, unigrams: Counter) -> float:
     """slope of a least squares fit of the dictionary's 0-255 frequency against log10 of the corpus probability:
     how many frequency points one factor of ten in probability is worth in this dictionary"""
@@ -126,7 +144,7 @@ def build(locale: Locale, sentences: list[str], existing_bigrams: dict[str, dict
     contexts: Counter = Counter()
     pairs: dict[str, Counter] = defaultdict(Counter)
     for sentence in sentences:
-        for tokens in locale.segments(sentence):
+        for tokens in counted_segments(locale, sentence):
             for i, word in enumerate(tokens):
                 if word is None:
                     continue
