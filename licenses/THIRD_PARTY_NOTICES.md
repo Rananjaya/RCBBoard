@@ -153,6 +153,22 @@ https://downloads.tatoeba.org/exports/per_language/eng/, downloaded on 28 Novemb
 SHA-256 `00e8f4618f4eadc799a55956af237ed70fdcbd7163151c81711971d71ef40302`. Mentioning Tatoeba does not mean that
 Tatoeba or its contributors endorse RCBBoard.
 
+About 3,300 modern everyday and technical words per English dictionary (for example GitHub, API, selfie, emoji,
+blockchain; American spellings only in en-US, British only in en-GB) come from **SCOWL** 2020.12.07, Spell Checker
+Oriented Word Lists by Kevin Atkinson (http://wordlist.aspell.net), lists up to size 50. Its notice, as required:
+
+> Copyright 2000-2018 by Kevin Atkinson
+>
+> Permission to use, copy, modify, distribute and sell these word lists, the associated scripts, the output created
+> from the scripts, and its documentation for any purpose is hereby granted without fee, provided that the above
+> copyright notice appears in all copies and that both that copyright notice and this permission notice appear in
+> supporting documentation. Kevin Atkinson makes no representations about the suitability of this array for any
+> purpose. It is provided "as is" without express or implied warranty.
+
+The full notice, including the copyrights of the sources SCOWL is built from, is in `third_party/scowl/Copyright`
+of the source repository. New words found in the LDNOOBW English list (CC BY 4.0) are marked possibly offensive;
+that list is only used for this check and is not included.
+
 The phrase files `assets/phrases/en-GB.phrases` and `assets/phrases/en-US.phrases` (which words often follow two
 given words) are counted from the same Tatoeba sentences, under the same licence and attribution, and contain only
 statistics, not sentences.

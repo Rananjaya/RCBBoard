@@ -290,6 +290,14 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
             hasAutoCorrection = false
         } else {
             val firstSuggestion = firstSuggestionInContainer ?: suggestionResults.first()
+            // RCBBoard: a word typed all in lower case is not replaced by a capitalised word (usually a name) that
+            // needs other letters: an unknown lower case word is more likely a term the dictionary lacks ("json" is
+            // not "Jason") than a misspelt name. It stays a suggestion; case-only fixes and shortcuts still apply.
+            if (consideredWord.any { it.isLetter() } && consideredWord.none { it.isUpperCase() }
+                && firstSuggestion.word.firstOrNull()?.isUpperCase() == true
+                && !firstSuggestion.word.equals(consideredWord, ignoreCase = true)
+                && !firstSuggestion.isKindOf(SuggestedWordInfo.KIND_WHITELIST)
+            ) return true to false
             if (suggestionResults.firstSuggestionExceedsConfidenceThreshold && firstOccurrenceOfTypedWordInSuggestions != 0) {
                 // mFirstSuggestionExceedsConfidenceThreshold is always set to false, so currently this branch is useless
                 return true to true

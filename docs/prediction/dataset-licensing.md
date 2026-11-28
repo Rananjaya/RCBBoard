@@ -18,7 +18,8 @@ below must be checked again at the source before it is used.
 | Wikipedia (English) dump | Encyclopaedic text | CC BY-SA 4.0 (one-way compatible with GPL-3.0) | Vocabulary and general n-grams; share-alike applies to derived data |
 | Project Gutenberg texts (public domain in the US) | Older literature | Public domain (US); check each text | **Used in M3** only as an independent test set (#1342, #1661), not in the app |
 | Google Books Ngram dataset | Book n-gram counts | CC BY 3.0 | Possible source of counts; book language, large |
-| SCOWL / spelling word lists | US/UK spelling variants | Permissive (MIT-like) | Mapping en-US ↔ en-GB spellings |
+| SCOWL 2020.12.07 | Curated word lists by commonness, US/UK variants | Permissive (notice required, verified) | **Used in M6**: modern words up to size 50 |
+| LDNOOBW English list | Offensive words | CC BY 4.0 | **Used in M6** only to mark new words possibly offensive; not shipped |
 
 ## Not allowed
 
@@ -27,6 +28,7 @@ below must be checked again at the source before it is used.
 | Google Web 1T and lists derived from it (e.g. popular `count_1w`/`count_2w` files) | LDC licence restricts redistribution |
 | COCA / iWeb n-grams | Commercial licence |
 | OpenSubtitles corpora | Copyright of the subtitles is unclear |
+| wordfreq data | Partly derived from OpenSubtitles and Twitter (excluded above); its author also asks not to convert it to other formats. Rejected in M6 |
 | Reddit, Twitter/X, message or chat logs | Terms of service, privacy; private conversations are excluded by the brief |
 | FUTO keyboard data or models | Excluded by the brief |
 | Any text from RCBBoard users | Never collected; the app has no network access |

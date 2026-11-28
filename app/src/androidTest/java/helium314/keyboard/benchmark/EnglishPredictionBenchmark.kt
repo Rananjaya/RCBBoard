@@ -241,6 +241,19 @@ class EnglishPredictionBenchmark {
         }
         result.put("must_stay", JSONObject().put("cases", safetyCases).put("changed_count", changed.length()).put("changed", changed))
 
+        // 4c. modern words: kept when typed exactly, and offered after their first four letters
+        var modernKept = 0; var modernCompleted = 0
+        val missing = ArrayList<String>()
+        MODERN.forEach { word ->
+            val r = suggestions(type(word, null), listOf("the"), null)
+            val committed = if (r.willAutoCorrect) r.getOrNull(SuggestedWords.INDEX_OF_AUTO_CORRECTION)?.word ?: word else word
+            if (committed.equals(word, ignoreCase = true)) modernKept++
+            if (suggestions(type(word.take(4), null), listOf("the"), null).drop(1).take(3).any { it.word.equals(word, true) })
+                modernCompleted++ else missing.add(word)
+        }
+        result.put("modern_words", JSONObject().put("cases", MODERN.size).put("kept", modernKept)
+            .put("completed_from_4_letters_top3", modernCompleted).put("not_completed", missing.joinToString(", ")))
+
         // 5. latency and memory (on this device only)
         val memory = Debug.MemoryInfo().also { Debug.getMemoryInfo(it) }
         result.put("latency_ms", JSONObject()
@@ -368,6 +381,10 @@ class EnglishPredictionBenchmark {
             "Kasun", "Nimal", "Dilshan", "Siobhan", "Niamh", "Rananjaya", "kotlin", "github", "javascript", "kubernetes",
             "postgres", "json", "npm", "sdk", "android", "linux", "example.com", "www.google.com", "user@example.com",
             "name.surname@mail.lk", "https://github.com")
+        // modern words (typed in lower case, as people do); not used to build anything
+        private val MODERN = listOf("selfie", "hashtag", "blockchain", "podcast", "emoji", "smartphone", "cryptocurrency",
+            "github", "kotlin", "javascript", "api", "covid", "bluetooth", "iphone", "wifi", "app", "email", "online",
+            "website", "download", "upload", "password", "username", "streaming", "chatbot", "laptop", "tablet")
         private val MUST_STAY_UK = listOf("colour", "organise", "centre", "favourite", "realise", "travelled", "programme")
         private val MUST_STAY_US = listOf("color", "organize", "center", "favorite", "realize", "traveled", "program")
         private val TYPOS = listOf("teh", "thsi", "goign", "becuase", "recieve", "tommorow", "helloworld")

@@ -31,6 +31,7 @@ python3 tools/english-dictionaries/build_english_bigrams.py --corpus eng_sentenc
 RCBBOARD_COMPILE_DICTS="/tmp/en-new/main_en-GB.combined=app/src/main/assets/dicts/main_en-GB.dict;/tmp/en-new/main_en-US.combined=app/src/main/assets/dicts/main_en-US.dict" \
   ./gradlew --init-script .github/ci-unit-tests.init.gradle :app:testRunTestsUnitTest \
   -Pandroid.onlyEnableUnitTestForTheTestedBuildType=false --tests 'helium314.keyboard.tools.CompileDictionaryTool'
+# (paths must be absolute: the test runs in app/)
 ```
 
 ```sh
@@ -43,6 +44,12 @@ python3 tools/english-dictionaries/build_english_trigrams.py --corpus eng_senten
 # 5. independent test set from two public domain books (Project Gutenberg #1342 and #1661, plain text)
 python3 tools/english-dictionaries/build_independent_benchmark.py --books pg1342.txt pg1661.txt \
   --dicts app/src/main/assets/dicts --bench app/src/androidTest/assets/benchmark
+```
+
+```sh
+# 6. modern words from SCOWL (http://wordlist.aspell.net, 2020.12.07) into the current dictionaries, then step 3
+python3 tools/english-dictionaries/add_vocabulary.py --scowl scowl-2020.12.07/final \
+  --dicts app/src/main/assets/dicts --offensive ldnoobw-en.txt --out /tmp/en-vocab
 ```
 
 Unit tests need JDK 21 or newer (for example Android Studio's JBR as `JAVA_HOME`).
