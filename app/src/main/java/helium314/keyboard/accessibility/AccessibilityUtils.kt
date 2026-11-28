@@ -147,7 +147,7 @@ class AccessibilityUtils private constructor() {
         // class. Instead, we're just forcing a fake AccessibilityEvent into
         // the screen reader to make it speak.
         val event = obtainEvent()
-        event.packageName = PACKAGE
+        event.packageName = mContext.packageName
         event.className = CLASS
         event.eventTime = SystemClock.uptimeMillis()
         event.isEnabled = true
@@ -193,7 +193,6 @@ class AccessibilityUtils private constructor() {
     companion object {
         private val TAG = AccessibilityUtils::class.java.simpleName
         private val CLASS = AccessibilityUtils::class.java.name
-        private val PACKAGE = AccessibilityUtils::class.java.getPackage()!!.name
         val instance = AccessibilityUtils()
         /*
          * Setting this constant to {@code false} will disable all keyboard

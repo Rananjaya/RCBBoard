@@ -25,7 +25,8 @@ RELEASE_CERT_SHA256 = "0b01373116d4a7b57646c4c7e2ffc28af91870bdbeabb4b8c05c00f31
 PRODUCTION_PACKAGE = "com.rananjaya.rcbboard"
 DEBUG_PACKAGE = PRODUCTION_PACKAGE + ".debug"
 # Job names in ci.yml = the required status checks of the develop branch ruleset.
-REQUIRED_CHECKS = ("Release script tests", "Unit tests", "Native tests (ASan/UBSan)", "Debug build")
+REQUIRED_CHECKS = ("Release script tests", "Unit tests", "Native tests (ASan/UBSan)", "Debug build",
+                   "Release smoke test")
 
 
 def read(name: str) -> str:
