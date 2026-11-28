@@ -286,6 +286,9 @@ jobs:
           api-level: 35
           target: google_apis
           arch: x86_64
+          profile: pixel_6
+          ram-size: 4096M
+          disk-size: 6000M
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: python3 .github/scripts/release_smoke_test.py --apk "$RUNNER_TEMP/dist/RCBBoard-$VERSION.apk" --package "$APP_PACKAGE" --out-dir "$RUNNER_TEMP/release-smoke"

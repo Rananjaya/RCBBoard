@@ -154,6 +154,10 @@ def smoke_test(device: Device, apk: Path, package: str) -> None:
 
     # 4. show the keyboard in the settings search field, then tap and type on it
     device.tap("Search")
+    for node in device.screen_nodes():  # some Android versions only show the keyboard when the field is tapped
+        if node.get("class", "").endswith("EditText"):
+            device.tap_node(node)
+            break
     deadline = time.time() + 20
     while not keyboard_shown(device) and time.time() < deadline:
         time.sleep(1)
@@ -171,6 +175,21 @@ def smoke_test(device: Device, apk: Path, package: str) -> None:
     (device.out_dir / "logcat.txt").write_text(device.run("logcat", "-d", timeout=60), encoding="utf-8")
 
 
+def save_diagnostics(device: Device) -> None:
+    """best effort: the device log and keyboard state, and whether the emulator is still reachable"""
+    state = subprocess.run([device.adb, "get-state"], capture_output=True, text=True, timeout=20)
+    if state.returncode or "device" not in state.stdout:
+        print("The emulator is no longer reachable: this is an emulator problem, not necessarily an app problem",
+              file=sys.stderr)
+        return
+    for name, args in (("logcat.txt", ("logcat", "-d")), ("input_method.txt", ("shell", "dumpsys input_method"))):
+        try:
+            result = subprocess.run([device.adb, *args], capture_output=True, text=True, timeout=60)
+            (device.out_dir / name).write_text(result.stdout, encoding="utf-8")
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apk", required=True, type=Path)
@@ -184,6 +203,7 @@ def main() -> int:
         smoke_test(device, args.apk, args.package)
     except SmokeTestError as error:
         print(f"Release smoke test failed: {error}", file=sys.stderr)
+        save_diagnostics(device)
         return 1
     print(f"Release smoke test passed: {args.apk.name} started, showed the Fret style and the keyboard, no crash")
     return 0
