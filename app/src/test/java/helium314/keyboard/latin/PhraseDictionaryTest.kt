@@ -58,6 +58,13 @@ class PhraseDictionaryTest {
         assertNull(uk.getSuggestions(ComposedData(InputPointers(1), false, ""), sentenceStart, 0, settings, 0, 1f, null))
     }
 
+    @Test fun threeWordsOfContextAreUsed() {
+        // 4-gram entries come in addition to the trigram ones (and score higher when both know the word)
+        val two = predictions(uk, "to", "meet").orEmpty()
+        val three = predictions(uk, "nice", "to", "meet").orEmpty()
+        assertTrue(three.size > two.size, "$two / $three")
+    }
+
     @Test fun phrasesAreNeverWordsOfTheirOwn() {
         assertTrue(!uk.isInDictionary("day"))
     }

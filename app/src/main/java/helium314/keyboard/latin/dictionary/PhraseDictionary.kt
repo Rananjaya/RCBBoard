@@ -14,26 +14,33 @@ import java.util.Locale
  * RCBBoard: trigram next-word predictions for English, from a read-only phrase file in assets/phrases
  * (built by tools/english-dictionaries/build_english_trigrams.py, format below).
  *
- * It answers only for next-word predictions (nothing typed yet) after two words, with the most likely next
- * words and a 0-255 score on the same scale as the main dictionary's bigram predictions. The results are
- * merged with the main dictionary's bigrams and the user history by score, so the dictionary's bigrams back
- * off for contexts it doesn't know. It never contributes to corrections, autocorrect or learning, and has no
- * words of its own ([isInDictionary] is always false).
+ * It answers only for next-word predictions (nothing typed yet): after three words from the 4-gram table, and after
+ * two words from the trigram table, with a 0-255 score on the same scale as the main dictionary's bigram
+ * predictions (the longer context scores higher). The results are merged with the main dictionary's bigrams and
+ * the user history by score, so shorter contexts are the back-off for longer ones the file doesn't know. It never
+ * contributes to corrections, autocorrect or learning, and has no words of its own ([isInDictionary] is false).
  *
- * File: "RCBP", u16 version, u16 reserved, u32 vocabulary / context / entry counts; vocabulary: u32 offsets
- * (count + 1) and the UTF-8 words, sorted by their bytes; contexts: u64 keys (id1 << 32 | id2) sorted, u32 entry
- * starts (count + 1); entries: u32 (word id << 8 | score). Big endian.
+ * File (version 2, big endian): "RCBP", u16 version, u16 reserved, u32 vocabulary count, u32 offsets (count + 1)
+ * and the UTF-8 words sorted by their bytes; then two sections, two-word and three-word contexts, each: u32
+ * context count, u32 entry count, u64 keys sorted (id1 << 32 | id2, or id1 << 42 | id2 << 21 | id3), u32 entry
+ * starts (count + 1), u32 entries (word id << 8 | score).
  */
 class PhraseDictionary private constructor(locale: Locale, private val data: ByteBuffer) :
     Dictionary(TYPE_PHRASES, locale) {
 
+    private class Section(data: ByteBuffer, start: Int) {
+        val contextCount = data.getInt(start)
+        val keys = start + 8
+        val starts = keys + 8 * contextCount
+        val entries = starts + 4 * (contextCount + 1)
+        val end = entries + 4 * data.getInt(start + 4)
+    }
+
     private val vocabularyCount = data.getInt(8)
-    private val contextCount = data.getInt(12)
-    private val vocabularyOffsets = 20
+    private val vocabularyOffsets = 12
     private val vocabularyBytes = vocabularyOffsets + 4 * (vocabularyCount + 1)
-    private val contextKeys = vocabularyBytes + data.getInt(vocabularyOffsets + 4 * vocabularyCount)
-    private val entryStarts = contextKeys + 8 * contextCount
-    private val entries = entryStarts + 4 * (contextCount + 1)
+    private val twoWords = Section(data, vocabularyBytes + data.getInt(vocabularyOffsets + 4 * vocabularyCount))
+    private val threeWords = Section(data, twoWords.end)
 
     override fun getSuggestions(
         composedData: ComposedData, ngramContext: NgramContext, proximityInfoHandle: Long,
@@ -45,18 +52,26 @@ class PhraseDictionary private constructor(locale: Locale, private val data: Byt
             return null
         val previous = wordId(ngramContext.getNthPrevWord(1)) ?: return null
         val beforePrevious = wordId(ngramContext.getNthPrevWord(2)) ?: return null
-        val context = findContext((beforePrevious.toLong() shl 32) or previous.toLong())
-        if (context < 0) return null
-        val start = data.getInt(entryStarts + 4 * context)
-        val end = data.getInt(entryStarts + 4 * (context + 1))
-        val result = ArrayList<SuggestedWordInfo>(end - start)
-        for (i in start until end) {
-            val entry = data.getInt(entries + 4 * i)
+        val result = ArrayList<SuggestedWordInfo>()
+        addEntries(twoWords, (beforePrevious.toLong() shl 32) or previous.toLong(), weightForLocale, result)
+        if (!ngramContext.isNthPrevWordBeginningOfSentence(3)) {
+            val third = wordId(ngramContext.getNthPrevWord(3))
+            if (third != null)
+                addEntries(threeWords, (third.toLong() shl 42) or (beforePrevious.toLong() shl 21) or previous.toLong(),
+                    weightForLocale, result)
+        }
+        return result.takeIf { it.isNotEmpty() }
+    }
+
+    private fun addEntries(section: Section, key: Long, weightForLocale: Float, result: ArrayList<SuggestedWordInfo>) {
+        val context = findContext(section, key)
+        if (context < 0) return
+        for (i in data.getInt(section.starts + 4 * context) until data.getInt(section.starts + 4 * (context + 1))) {
+            val entry = data.getInt(section.entries + 4 * i)
             val score = ((entry and 0xFF) * weightForLocale).toInt()
             result.add(SuggestedWordInfo(word(entry ushr 8), "", score, SuggestedWordInfo.KIND_PREDICTION, this,
                 SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE))
         }
-        return result
     }
 
     override fun isInDictionary(word: String) = false
@@ -103,12 +118,12 @@ class PhraseDictionary private constructor(locale: Locale, private val data: Byt
         return String(bytes, Charsets.UTF_8)
     }
 
-    private fun findContext(key: Long): Int {
+    private fun findContext(section: Section, key: Long): Int {
         var low = 0
-        var high = contextCount - 1
+        var high = section.contextCount - 1
         while (low <= high) {
             val middle = (low + high) ushr 1
-            val stored = data.getLong(contextKeys + 8 * middle)
+            val stored = data.getLong(section.keys + 8 * middle)
             when {
                 stored < key -> low = middle + 1
                 stored > key -> high = middle - 1
@@ -121,7 +136,7 @@ class PhraseDictionary private constructor(locale: Locale, private val data: Byt
     companion object {
         const val TYPE_PHRASES = "phrases"
         private const val TAG = "PhraseDictionary"
-        private const val VERSION = 1
+        private const val VERSION = 2
 
         /** the phrase dictionary for [locale] (English only), or null if there is none or it can't be read */
         @JvmStatic
@@ -131,7 +146,7 @@ class PhraseDictionary private constructor(locale: Locale, private val data: Byt
             return try {
                 val bytes = context.assets.open(name).use { it.readBytes() }
                 val data = ByteBuffer.wrap(bytes) // big endian, as written by the build script
-                if (bytes.size < 20 || bytes[0] != 'R'.code.toByte() || bytes[1] != 'C'.code.toByte()
+                if (bytes.size < 12 || bytes[0] != 'R'.code.toByte() || bytes[1] != 'C'.code.toByte()
                         || bytes[2] != 'B'.code.toByte() || bytes[3] != 'P'.code.toByte()
                         || data.getShort(4).toInt() != VERSION) {
                     Log.w(TAG, "$name is not a phrase file of version $VERSION")
